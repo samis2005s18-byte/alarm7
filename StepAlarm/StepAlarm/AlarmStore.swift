@@ -20,15 +20,18 @@ struct AlarmItem: Identifiable, Codable, Hashable {
     /// Cosmetic only for now — not yet wired into AlarmKit's actual alert
     /// sound. See AddAlarmView's sound row for why.
     var soundName: String = "Default"
+    /// Lets this alarm be turned off without walking by holding a button for
+    /// 10 seconds on the Wake Up screen — for people who may not be able to walk.
+    var emergencyStop: Bool = false
 
     enum CodingKeys: String, CodingKey {
-        case id, hour, minute, steps, days, isOn, label, snoozeEnabled, vibrationEnabled, soundName
+        case id, hour, minute, steps, days, isOn, label, snoozeEnabled, vibrationEnabled, soundName, emergencyStop
     }
 
     init(
         id: UUID = UUID(), hour: Int, minute: Int, steps: Int = 15, days: Set<Int> = [],
         isOn: Bool = true, label: String = "", snoozeEnabled: Bool = true, vibrationEnabled: Bool = true,
-        soundName: String = "Default"
+        soundName: String = "Default", emergencyStop: Bool = false
     ) {
         self.id = id
         self.hour = hour
@@ -40,6 +43,7 @@ struct AlarmItem: Identifiable, Codable, Hashable {
         self.snoozeEnabled = snoozeEnabled
         self.vibrationEnabled = vibrationEnabled
         self.soundName = soundName
+        self.emergencyStop = emergencyStop
     }
 
     /// Custom decode so alarms saved before a field existed still load
@@ -56,6 +60,7 @@ struct AlarmItem: Identifiable, Codable, Hashable {
         snoozeEnabled = try c.decodeIfPresent(Bool.self, forKey: .snoozeEnabled) ?? true
         vibrationEnabled = try c.decodeIfPresent(Bool.self, forKey: .vibrationEnabled) ?? true
         soundName = try c.decodeIfPresent(String.self, forKey: .soundName) ?? "Default"
+        emergencyStop = try c.decodeIfPresent(Bool.self, forKey: .emergencyStop) ?? false
     }
 
     static func new(defaultSteps: Int = 15) -> AlarmItem {
@@ -207,9 +212,13 @@ final class AlarmStore {
                 await AlarmScheduler.shared.schedule(item)
             }
         }
-        // Repeating alarms need their backup rings queued for the next occurrence.
-        for item in alarms where item.isOn && !item.days.isEmpty && AlarmGoals.backups(for: item.id).isEmpty {
-            await AlarmScheduler.shared.scheduleBackups(for: item)
+        // Repeating alarms need their backup rings queued for the next
+        // occurrence — including after the last ones all rang unanswered.
+        for item in alarms where item.isOn && !item.days.isEmpty {
+            let backups = AlarmGoals.backups(for: item.id)
+            if !backups.contains(where: live.contains) {
+                await AlarmScheduler.shared.scheduleBackups(for: item)
+            }
         }
         save()
     }

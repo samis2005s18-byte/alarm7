@@ -17,6 +17,8 @@ struct WakeUpView: View {
     var repeatOffer: RepeatOffer? = nil
     /// Small gray line showing what the phone detects (temporary, for tuning).
     var diagnostics: String = ""
+    /// Shown only for alarms with Emergency stop turned on.
+    var onEmergencyStop: (() -> Void)? = nil
 
     struct RepeatOffer {
         var nextTime: Date
@@ -49,11 +51,18 @@ struct WakeUpView: View {
 
             Spacer(minLength: Theme.Spacing.lg)
 
-            Text(isComplete ? "" : diagnostics)
-                .font(.caption2)
-                .foregroundStyle(.white.opacity(0.45))
-                .frame(height: Theme.minTapTarget)
-                .padding(.bottom, Theme.Spacing.lg)
+            Group {
+                if !isComplete, let onEmergencyStop {
+                    HoldToStopButton(onComplete: onEmergencyStop)
+                } else {
+                    Text(isComplete ? "" : diagnostics)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.45))
+                }
+            }
+            .frame(minHeight: Theme.minTapTarget)
+            .padding(.horizontal, Theme.Spacing.xl)
+            .padding(.bottom, Theme.Spacing.lg)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background((isComplete ? Theme.background : .black).ignoresSafeArea())
@@ -165,6 +174,43 @@ struct WakeUpView: View {
     }
 }
 
+/// "Can't walk? Hold to stop" — must be held for the full 10 seconds, so it's
+/// there for people who can't walk but too slow to be an easy way out.
+private struct HoldToStopButton: View {
+    var onComplete: () -> Void
+    @State private var progress = 0.0
+
+    private static let holdDuration: TimeInterval = 10
+
+    var body: some View {
+        Label("Can't walk? Hold for 10 seconds to stop", systemImage: "exclamationmark.triangle.fill")
+            .font(.footnote.weight(.semibold))
+            .foregroundStyle(Theme.accent)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Theme.Spacing.sm + 4)
+            .background(alignment: .leading) {
+                GeometryReader { geo in
+                    Capsule()
+                        .fill(Theme.accent.opacity(0.3))
+                        .frame(width: geo.size.width * progress)
+                }
+            }
+            .overlay(Capsule().stroke(Theme.accent, lineWidth: 1))
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+            .onLongPressGesture(minimumDuration: Self.holdDuration, maximumDistance: 60) {
+                onComplete()
+            } onPressingChanged: { pressing in
+                if pressing {
+                    withAnimation(.linear(duration: Self.holdDuration)) { progress = 1 }
+                } else {
+                    withAnimation(.easeOut(duration: 0.2)) { progress = 0 }
+                }
+            }
+            .accessibilityHint("Touch and hold for 10 seconds to turn off the alarm without walking")
+    }
+}
+
 /// The live version: reads the walk session (real or demo) and refreshes
 /// the clock / "moving" status once a second.
 struct WakeUpScreen: View {
@@ -184,7 +230,8 @@ struct WakeUpScreen: View {
                 statusIcon: session.progressIcon,
                 errorMessage: session.motionMessage,
                 repeatOffer: repeatOffer,
-                diagnostics: session.diagnostics
+                diagnostics: session.diagnostics,
+                onEmergencyStop: session.emergencyStopAllowed ? { session.emergencyStop() } : nil
             )
         }
         .sheet(isPresented: $showPaywall) {

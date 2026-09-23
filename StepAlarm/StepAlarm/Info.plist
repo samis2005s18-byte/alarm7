@@ -5,9 +5,9 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSAlarmKitUsageDescription</key>
-	<string>Step Alarm needs alarm access to wake you up.</string>
+	<string>Alarm7 needs alarm access to wake you up.</string>
 	<key>NSMotionUsageDescription</key>
-	<string>Step Alarm counts your steps to turn the alarm off.</string>
+	<string>Alarm7 counts your steps to turn the alarm off.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIBackgroundModes</key>

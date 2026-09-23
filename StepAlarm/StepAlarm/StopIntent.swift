@@ -39,7 +39,8 @@ struct StopAlarmIntent: LiveActivityIntent {
                     label: settings?.label ?? "",
                     vibrationEnabled: settings?.vibrationEnabled ?? true,
                     hour: settings?.hour ?? 7,
-                    minute: settings?.minute ?? 0
+                    minute: settings?.minute ?? 0,
+                    emergencyStop: settings?.emergencyStop ?? false
                 )
             }
             WalkSession.shared.begin(alarmID: id)

@@ -362,9 +362,9 @@ fileprivate enum DeniedKind: Identifiable {
     var explanation: String {
         switch self {
         case .alarm:
-            return "StepAlarm needs alarm access to actually wake you up. Without it, your alarms can't ring."
+            return "Alarm7 needs alarm access to actually wake you up. Without it, your alarms can't ring."
         case .motion:
-            return "StepAlarm needs Motion & Fitness access to count your steps. Without it, you can't walk to dismiss an alarm."
+            return "Alarm7 needs Motion & Fitness access to count your steps. Without it, you can't walk to dismiss an alarm."
         }
     }
 }

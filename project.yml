@@ -24,9 +24,12 @@ targets:
           - Info.plist
           - WalkingIcon.png
           - StepAlarm.storekit
+          - PrivacyInfo.xcprivacy
       - path: StepAlarm/Shared
       - path: StepAlarm/StepAlarm/StepAlarm.storekit
         buildPhase: none
+      - path: StepAlarm/StepAlarm/PrivacyInfo.xcprivacy
+        buildPhase: resources
     dependencies:
       - target: StepAlarmWidget
     settings:

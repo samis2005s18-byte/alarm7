@@ -10,6 +10,8 @@ struct AlarmRingSettings: Codable {
     var vibrationEnabled: Bool
     var hour: Int
     var minute: Int
+    /// Optional so settings saved by earlier versions still load.
+    var emergencyStop: Bool?
 }
 
 /// Remembers each scheduled alarm's ring settings and which "re-ring"
@@ -162,7 +164,7 @@ final class AlarmScheduler {
         await submit(
             id: item.id, schedule: schedule, steps: item.steps, label: item.label,
             snoozeEnabled: item.snoozeEnabled, vibrationEnabled: item.vibrationEnabled,
-            hour: item.hour, minute: item.minute
+            hour: item.hour, minute: item.minute, emergencyStop: item.emergencyStop
         )
         await scheduleBackups(for: item)
     }
@@ -187,12 +189,14 @@ final class AlarmScheduler {
         guard let next = item.nextRingDate() else { return }
         await scheduleBackups(
             parent: item.id, firstRing: next, steps: item.steps, label: item.label,
-            vibrationEnabled: item.vibrationEnabled, hour: item.hour, minute: item.minute
+            vibrationEnabled: item.vibrationEnabled, hour: item.hour, minute: item.minute,
+            emergencyStop: item.emergencyStop
         )
     }
 
     private func scheduleBackups(
-        parent: UUID, firstRing: Date, steps: Int, label: String, vibrationEnabled: Bool, hour: Int, minute: Int
+        parent: UUID, firstRing: Date, steps: Int, label: String, vibrationEnabled: Bool, hour: Int, minute: Int,
+        emergencyStop: Bool = false
     ) async {
         await cancelBackups(of: parent)
         var ids: [UUID] = []
@@ -202,7 +206,7 @@ final class AlarmScheduler {
             await submit(
                 id: id, schedule: .fixed(firstRing.addingTimeInterval(Double(k) * Self.backupInterval)),
                 steps: steps, label: label, snoozeEnabled: true, vibrationEnabled: vibrationEnabled,
-                hour: hour, minute: minute
+                hour: hour, minute: minute, emergencyStop: emergencyStop
             )
         }
         AlarmGoals.setBackups(ids, for: parent)
@@ -223,32 +227,37 @@ final class AlarmScheduler {
     /// Steps walked: silence this alarm and everything queued to ring it again.
     func finishRinging(alarmID: UUID) async {
         let parent = AlarmGoals.parent(of: alarmID) ?? alarmID
+        // Re-rings are listed among the parent's backups, so this silences
+        // them too — without touching other alarms' re-rings.
+        let silenced = Set(AlarmGoals.backups(for: parent))
         await stopAlarm(alarmID)
         await stopAlarm(parent)
         await cancelBackups(of: parent)
-        await cancelReRings()
+        AlarmGoals.reRingIDs.removeAll { silenced.contains($0) || $0 == alarmID }
     }
 
     /// Rings again shortly after the system Stop button was tapped.
-    func scheduleReRing(parent: UUID, steps: Int, label: String, vibrationEnabled: Bool, hour: Int, minute: Int) async {
+    func scheduleReRing(
+        parent: UUID, steps: Int, label: String, vibrationEnabled: Bool, hour: Int, minute: Int, emergencyStop: Bool
+    ) async {
         let id = UUID()
         AlarmGoals.reRingIDs.append(id)
         AlarmGoals.setBackups(AlarmGoals.backups(for: parent) + [id], for: parent)
         let fire = Date().addingTimeInterval(Self.reRingDelay)
         await submit(
             id: id, schedule: .fixed(fire), steps: steps, label: label, snoozeEnabled: true,
-            vibrationEnabled: vibrationEnabled, hour: hour, minute: minute
+            vibrationEnabled: vibrationEnabled, hour: hour, minute: minute, emergencyStop: emergencyStop
         )
     }
 
     private func submit(
         id: UUID, schedule: Alarm.Schedule, steps: Int, label: String, snoozeEnabled: Bool, vibrationEnabled: Bool,
-        hour: Int, minute: Int
+        hour: Int, minute: Int, emergencyStop: Bool = false
     ) async {
         AlarmGoals.set(
             AlarmRingSettings(
                 stepGoal: steps, label: label, snoozeEnabled: snoozeEnabled, vibrationEnabled: vibrationEnabled,
-                hour: hour, minute: minute
+                hour: hour, minute: minute, emergencyStop: emergencyStop
             ),
             for: id
         )
@@ -256,7 +265,8 @@ final class AlarmScheduler {
         let stopButton = AlarmButton(text: "Stop", textColor: .white, systemImageName: "stop.fill")
         let walkButton = AlarmButton(text: "Walk", textColor: .white, systemImageName: "figure.walk")
 
-        let title = label.isEmpty ? "Wake up! Walk \(steps) steps" : "\(label) — walk \(steps) steps"
+        let stepsText = "\(steps) \(steps == 1 ? "step" : "steps")"
+        let title = label.isEmpty ? "Wake up! Walk \(stepsText)" : "\(label) — walk \(stepsText)"
         let alert = AlarmPresentation.Alert(
             title: LocalizedStringResource(stringLiteral: title),
             stopButton: stopButton,

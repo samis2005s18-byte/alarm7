@@ -117,7 +117,7 @@ struct ContentView: View {
                     Task {
                         await store.upsert(saved)
                         if let next = saved.nextRingDate() {
-                            toastMessage = ToastMessage(text: "Alarm set for " + AlarmItem.countdownText(to: next))
+                            toastMessage = ToastMessage(text: "Alarm set, rings " + AlarmItem.countdownText(to: next))
                         }
                     }
                     // The one moment the paywall is allowed to appear
@@ -341,7 +341,9 @@ struct ContentView: View {
                 Toggle("", isOn: Binding(
                     get: { alarm.isOn },
                     set: { on in
-                        if !on && blockIfRinging(alarm.id) { return }
+                        // While ringing, it can't be switched off — or off and
+                        // back on, which would reset its backup rings.
+                        if blockIfRinging(alarm.id) { return }
                         Theme.tap()
                         Task {
                             if on, !(await ensurePermissions()) {

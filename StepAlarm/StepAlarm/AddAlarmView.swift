@@ -14,8 +14,8 @@ struct AddAlarmView: View {
     @State private var time: Date
     @State private var steps: Double
     @State private var days: Set<Int>   // 0 = Sunday … 6 = Saturday
-    @State private var label: String
     @State private var vibrationEnabled: Bool
+    @State private var emergencyStop: Bool
     @State private var showPaywall = false
 
     private var isPro: Bool { SubscriptionStore.shared.hasFullAccess }
@@ -34,8 +34,8 @@ struct AddAlarmView: View {
         _time = State(initialValue: alarm.date)
         _steps = State(initialValue: Double(alarm.steps))
         _days = State(initialValue: alarm.days)
-        _label = State(initialValue: alarm.label)
         _vibrationEnabled = State(initialValue: alarm.vibrationEnabled)
+        _emergencyStop = State(initialValue: alarm.emergencyStop)
     }
 
     var body: some View {
@@ -54,8 +54,8 @@ struct AddAlarmView: View {
             List {
                 stepsSection
                 repeatSection
-                labelSection
                 extrasSection
+                emergencySection
                 if let onDelete {
                     Section {
                         Button(role: .destructive, action: onDelete) {
@@ -266,22 +266,6 @@ struct AddAlarmView: View {
         .buttonStyle(.pressable)
     }
 
-    // MARK: - Label
-
-    private var labelSection: some View {
-        Section {
-            HStack {
-                Label("Label", systemImage: "tag")
-                Spacer()
-                TextField("e.g. Gym, Work", text: $label)
-                    .multilineTextAlignment(.trailing)
-                    .foregroundStyle(Theme.textSecondary)
-            }
-            .font(.subheadline.weight(.medium))
-            .foregroundStyle(Theme.textPrimary)
-        }
-    }
-
     // MARK: - Vibration
 
     private var extrasSection: some View {
@@ -296,6 +280,22 @@ struct AddAlarmView: View {
         }
     }
 
+    // MARK: - Emergency stop
+
+    private var emergencySection: some View {
+        Section {
+            Toggle(isOn: $emergencyStop) {
+                Label("Emergency stop", systemImage: "exclamationmark.triangle.fill")
+                    .foregroundStyle(Theme.accent)
+            }
+            .tint(Theme.accent)
+            .onChange(of: emergencyStop) { _, _ in Theme.tap() }
+        } footer: {
+            Text("Caution: this lets you turn off the alarm without walking by holding a button for 10 seconds. Only turn it on if you might not be able to walk, for example because of an injury.")
+                .foregroundStyle(Theme.accent)
+        }
+    }
+
     private func save() {
         let parts = Calendar.current.dateComponents([.hour, .minute], from: time)
         var updated = alarm
@@ -303,7 +303,7 @@ struct AddAlarmView: View {
         updated.minute = parts.minute ?? alarm.minute
         updated.steps = Int(steps)
         updated.days = isPro ? days : []
-        updated.label = label
+        updated.emergencyStop = emergencyStop
         updated.snoozeEnabled = true
         updated.vibrationEnabled = vibrationEnabled
         updated.isOn = true

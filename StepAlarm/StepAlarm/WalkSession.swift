@@ -19,6 +19,8 @@ final class WalkSession {
     private(set) var label = ""
     private(set) var lastStepDate: Date?
     private(set) var motionMessage: String?
+    /// This alarm allows "hold to stop" without walking (set per alarm).
+    private(set) var emergencyStopAllowed = false
 
     /// Snapshot taken at the moment of completion, for the "Set again for
     /// tomorrow?" offer — `alarmID` itself doesn't survive `close()`.
@@ -60,6 +62,7 @@ final class WalkSession {
     func begin(alarmID: UUID) {
         guard !isActive else { return }
         let settings = AlarmGoals.settings(for: alarmID)
+        emergencyStopAllowed = settings?.emergencyStop ?? false
         start(
             alarmID: alarmID, goal: settings?.stepGoal ?? 15, label: settings?.label ?? "",
             vibrationEnabled: settings?.vibrationEnabled ?? true,
@@ -69,6 +72,7 @@ final class WalkSession {
 
     func beginDemo(goal: Int = 15) {
         guard !isActive else { return }
+        emergencyStopAllowed = false
         start(alarmID: nil, goal: goal, label: "", vibrationEnabled: true, hour: 7, minute: 0, demo: true)
     }
 
@@ -336,6 +340,13 @@ final class WalkSession {
             try? await Task.sleep(for: .seconds(showsOffer ? 6 : 2))
             close()
         }
+    }
+
+    /// The alarm's emergency stop: held for 10 seconds on the Wake Up screen,
+    /// it ends the alarm (and its backup rings) exactly as walking would.
+    func emergencyStop() {
+        guard isActive, !isComplete, !isDemo, emergencyStopAllowed else { return }
+        complete()
     }
 
     /// Lets the Wake Up screen close immediately once the user has made a

@@ -50,7 +50,7 @@ final class LiveActivityController {
 
     private func startTicking(stepGoal: Int, durationSeconds: Int) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-            lastError = "Live Activities not enabled — check Settings > StepAlarm > Live Activities."
+            lastError = "Live Activities not enabled — check Settings > Alarm7 > Live Activities."
             return
         }
 
