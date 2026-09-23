@@ -32,6 +32,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: StepAlarm
+        TARGETED_DEVICE_FAMILY: "1"
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
         INFOPLIST_FILE: StepAlarm/StepAlarm/Info.plist
         GENERATE_INFOPLIST_FILE: YES
@@ -53,6 +54,7 @@ targets:
     settings:
       base:
         PRODUCT_NAME: StepAlarmWidget
+        TARGETED_DEVICE_FAMILY: "1"
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).StepAlarmWidget
         INFOPLIST_FILE: StepAlarm/StepAlarmWidget/Info.plist
         GENERATE_INFOPLIST_FILE: YES
