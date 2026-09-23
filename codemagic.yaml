@@ -18,6 +18,12 @@ workflows:
           xcodegen generate
       - name: Set up code signing
         script: |
+          set -e
+          echo "Signing key length: ${#CERTIFICATE_PRIVATE_KEY} characters"
+          if [ -z "$CERTIFICATE_PRIVATE_KEY" ]; then
+            echo "CERTIFICATE_PRIVATE_KEY is empty - re-add it in Environment variables (group: signing)"
+            exit 1
+          fi
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --strict-match-identifier --create
           app-store-connect fetch-signing-files "$BUNDLE_ID.StepAlarmWidget" --type IOS_APP_STORE --strict-match-identifier --create
