@@ -44,6 +44,8 @@ final class WalkSession {
     /// shown for comparison and used if the motion sensors aren't available.
     private(set) var rawSteps = 0
     private var shakesBlocked = 0
+    /// Steps the detector has confirmed as walking (what the goal counts).
+    @ObservationIgnored private var confirmedSteps = 0
 
     /// Steps from the seconds before iOS recognised a walk still count in history.
     private static let recognitionLeadIn: TimeInterval = 15
@@ -140,6 +142,7 @@ final class WalkSession {
     private func startPedometer() {
         rawSteps = 0
         shakesBlocked = 0
+        confirmedSteps = 0
         detector = StepDetector()
         if CMPedometer.isStepCountingAvailable() {
             pedometer.startUpdates(from: startDate) { @Sendable [weak self] data, error in
@@ -171,9 +174,24 @@ final class WalkSession {
     }
 
     private func handleMotion(_ sample: StepDetector.Sample) {
-        let newSteps = detector.add(sample)
+        confirmedSteps += detector.add(sample)
         if detector.rejectedShakes != shakesBlocked { shakesBlocked = detector.rejectedShakes }
-        if newSteps > 0 { apply(count: steps + newSteps, error: nil) }
+        if confirmedSteps >= goal {
+            apply(count: confirmedSteps, error: nil)
+        } else {
+            // Each step shows up the moment it's detected; steps still being
+            // checked for a walking rhythm drop back off if they were shaking.
+            showSteps(min(confirmedSteps + detector.pendingSteps, goal - 1))
+        }
+    }
+
+    private func showSteps(_ count: Int) {
+        guard isActive, !isComplete, count != steps else { return }
+        if count > steps {
+            lastStepDate = Date()
+            if vibrationEnabled { Theme.tap() }
+        }
+        steps = count
     }
 
     private func handlePedometerUpdate(rawCount: Int?, error: String?) {
@@ -213,7 +231,8 @@ final class WalkSession {
             for interval in intervals {
                 verified += await querySteps(from: interval.start, to: interval.end)
             }
-            apply(count: min(verified, rawSteps), error: nil)
+            confirmedSteps = max(confirmedSteps, min(verified, rawSteps))
+            apply(count: confirmedSteps, error: nil)
         }
     }
 
@@ -264,10 +283,21 @@ final class WalkSession {
         if steps >= goal { complete() }
     }
 
+    private var isVolumeLow: Bool {
+        !isDemo && AVAudioSession.sharedInstance().outputVolume < 0.3
+    }
+
+    /// Icon shown next to `progressStatus`, when it has one.
+    var progressIcon: String? {
+        if isComplete { return "sun.max.fill" }
+        if isVolumeLow { return "speaker.wave.3.fill" }
+        return nil
+    }
+
     /// A short line that reacts to progress, shown under the step ring.
     var progressStatus: String {
-        if isComplete { return "You're up ☀️" }
-        if !isDemo && AVAudioSession.sharedInstance().outputVolume < 0.3 { return "Turn your volume up 🔊" }
+        if isComplete { return "You're up" }
+        if isVolumeLow { return "Turn your volume up" }
         if steps == 0 { return "Start walking…" }
         let ratio = Double(steps) / Double(max(goal, 1))
         return ratio < 0.5 ? "Nice, keep going!" : "Almost there!"

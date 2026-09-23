@@ -35,6 +35,9 @@ struct StepDetector {
     static let fastPeakWindow = 2.0       // s
 
     private(set) var rejectedShakes = 0
+    /// Steps seen while the walking rhythm is still being checked. Shown right
+    /// away, but dropped again if they turn out to be shaking.
+    var pendingSteps: Int { counting ? 0 : pending }
 
     private var smoothed = 0.0
     private var armed = true

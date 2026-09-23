@@ -57,6 +57,9 @@ struct ContentView: View {
                                     }
                                 }
                         }
+                        .onDelete { offsets in
+                            for index in offsets { deleteAlarm(store.alarms[index].id) }
+                        }
                     }
                 }
             }
@@ -65,17 +68,14 @@ struct ContentView: View {
             .navigationTitle("Alarms")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
+                if !store.alarms.isEmpty {
+                    ToolbarItem(placement: .topBarLeading) {
+                        EditButton()
+                            .foregroundStyle(Theme.textPrimary)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: Theme.Spacing.md) {
-                        if !SubscriptionStore.shared.isPro {
-                            Button { showPaywall = true } label: {
-                                Label("Pro", systemImage: "crown.fill")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(Theme.textPrimary)
-                            }
-                            .buttonStyle(.pressable)
-                            .accessibilityLabel("Upgrade to Pro")
-                        }
                         Button { showSettings = true } label: {
                             Image(systemName: "gearshape")
                                 .foregroundStyle(Theme.textPrimary)

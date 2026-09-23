@@ -11,6 +11,7 @@ struct WakeUpView: View {
     var isComplete: Bool = false
     var label: String = ""
     var statusText: String = "Start walking…"
+    var statusIcon: String? = nil
     var errorMessage: String? = nil
     /// Free tier only — offered once, right after a one-time alarm rings.
     var repeatOffer: RepeatOffer? = nil
@@ -102,7 +103,13 @@ struct WakeUpView: View {
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.white)
 
-                Text(errorMessage ?? statusText)
+                Group {
+                    if errorMessage == nil, let statusIcon {
+                        Label(statusText, systemImage: statusIcon)
+                    } else {
+                        Text(errorMessage ?? statusText)
+                    }
+                }
                     .font(.subheadline)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(errorMessage != nil ? Theme.accent : .white.opacity(0.7))
@@ -144,7 +151,7 @@ struct WakeUpView: View {
                     .buttonStyle(.pressable)
 
                     Button(action: offer.onShowPaywall) {
-                        Text("🔒 Make it repeat automatically with Pro")
+                        Label("Make it repeat automatically with Pro", systemImage: "lock.fill")
                             .font(.footnote)
                             .foregroundStyle(Theme.textSecondary)
                     }
@@ -174,6 +181,7 @@ struct WakeUpScreen: View {
                 isComplete: session.isComplete,
                 label: session.label,
                 statusText: session.progressStatus,
+                statusIcon: session.progressIcon,
                 errorMessage: session.motionMessage,
                 repeatOffer: repeatOffer,
                 diagnostics: session.diagnostics
