@@ -8,6 +8,8 @@ struct AddAlarmView: View {
     let title: String
     var onCancel: () -> Void
     var onSave: (AlarmItem) -> Void
+    /// Set only when editing a saved alarm — shows the Delete Alarm button.
+    var onDelete: (() -> Void)?
 
     @State private var time: Date
     @State private var steps: Double
@@ -22,11 +24,13 @@ struct AddAlarmView: View {
     private static let dayLetters = ["S", "M", "T", "W", "T", "F", "S"]
 
     init(alarm: AlarmItem, title: String,
-         onCancel: @escaping () -> Void, onSave: @escaping (AlarmItem) -> Void) {
+         onCancel: @escaping () -> Void, onSave: @escaping (AlarmItem) -> Void,
+         onDelete: (() -> Void)? = nil) {
         self.alarm = alarm
         self.title = title
         self.onCancel = onCancel
         self.onSave = onSave
+        self.onDelete = onDelete
         _time = State(initialValue: alarm.date)
         _steps = State(initialValue: Double(alarm.steps))
         _days = State(initialValue: alarm.days)
@@ -52,6 +56,15 @@ struct AddAlarmView: View {
                 repeatSection
                 labelSection
                 extrasSection
+                if let onDelete {
+                    Section {
+                        Button(role: .destructive, action: onDelete) {
+                            Label("Delete Alarm", systemImage: "trash")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .foregroundStyle(Theme.accent)
+                    }
+                }
             }
             .listStyle(.insetGrouped)
         }

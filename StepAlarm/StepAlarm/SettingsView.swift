@@ -63,7 +63,15 @@ struct SettingsView: View {
                 }
 
                 Section("Subscription") {
-                    if subscriptions.isPro {
+                    if !SubscriptionStore.purchasesEnabled {
+                        HStack {
+                            Label("Alarm7 Pro", systemImage: "crown.fill")
+                            Spacer()
+                            Text("Coming soon")
+                                .font(.subheadline)
+                                .foregroundStyle(Theme.textSecondary)
+                        }
+                    } else if subscriptions.isPro {
                         Label("Alarm7 Pro is active", systemImage: "checkmark.seal.fill")
                             .foregroundStyle(Theme.textPrimary)
                     } else {
@@ -71,10 +79,12 @@ struct SettingsView: View {
                             Label("Upgrade to Pro", systemImage: "crown.fill")
                         }
                     }
-                    Button {
-                        Task { await subscriptions.restore() }
-                    } label: {
-                        Label("Restore Purchases", systemImage: "arrow.clockwise")
+                    if SubscriptionStore.purchasesEnabled {
+                        Button {
+                            Task { await subscriptions.restore() }
+                        } label: {
+                            Label("Restore Purchases", systemImage: "arrow.clockwise")
+                        }
                     }
                 }
 

@@ -31,6 +31,7 @@ struct StopAlarmIntent: LiveActivityIntent {
             let settings = AlarmGoals.settings(for: id)
             if settings?.snoozeEnabled ?? true {
                 await AlarmScheduler.shared.scheduleReRing(
+                    parent: AlarmGoals.parent(of: id) ?? id,
                     steps: settings?.stepGoal ?? 15,
                     label: settings?.label ?? "",
                     vibrationEnabled: settings?.vibrationEnabled ?? true,

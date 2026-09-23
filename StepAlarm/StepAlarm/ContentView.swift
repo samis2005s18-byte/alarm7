@@ -44,7 +44,7 @@ struct ContentView: View {
                             alarmRow(alarm)
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
-                                        Task { await store.delete(alarm.id) }
+                                        deleteAlarm(alarm.id)
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
@@ -93,6 +93,10 @@ struct ContentView: View {
                 title: store.isSaved(alarm.id) ? "Edit Alarm" : "Add Alarm",
                 onCancel: { sheetAlarm = nil },
                 onSave: { saved in
+                    if blockIfRinging(saved.id) {
+                        sheetAlarm = nil
+                        return
+                    }
                     sheetAlarm = nil
                     let isFirstEver = !settings.hasSavedFirstAlarm
                     settings.hasSavedFirstAlarm = true
@@ -105,10 +109,14 @@ struct ContentView: View {
                     // The one moment the paywall is allowed to appear
                     // unprompted — right after the very first alarm ever
                     // created, never before it.
-                    if isFirstEver && !SubscriptionStore.shared.isPro {
+                    if isFirstEver && !SubscriptionStore.shared.isPro && SubscriptionStore.purchasesEnabled {
                         showPaywall = true
                     }
-                }
+                },
+                onDelete: store.isSaved(alarm.id) ? {
+                    sheetAlarm = nil
+                    deleteAlarm(alarm.id)
+                } : nil
             )
             .presentationDetents([.large])
         }
@@ -163,6 +171,20 @@ struct ContentView: View {
         await store.refreshFromSystem()
         await store.downgradeRepeatingAlarmsIfNeeded()
         session.resumeIfAlarmRinging()
+    }
+
+    private func deleteAlarm(_ id: UUID) {
+        if blockIfRinging(id) { return }
+        Task { await store.delete(id) }
+    }
+
+    /// While an alarm is ringing (or waiting to ring again), only walking can
+    /// end it — it can't be switched off, edited away, or deleted.
+    private func blockIfRinging(_ id: UUID) -> Bool {
+        guard AlarmGoals.isRinging(id) else { return false }
+        toastMessage = ToastMessage(text: "Walk your steps to turn this alarm off", systemImage: "figure.walk")
+        session.resumeIfAlarmRinging()
+        return true
     }
 
     /// 3 free alarms, unlimited for Pro.
@@ -262,6 +284,7 @@ struct ContentView: View {
                 Toggle("", isOn: Binding(
                     get: { alarm.isOn },
                     set: { on in
+                        if !on && blockIfRinging(alarm.id) { return }
                         Theme.tap()
                         Task { await store.setEnabled(alarm.id, on) }
                     }

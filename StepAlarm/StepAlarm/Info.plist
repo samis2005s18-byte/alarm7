@@ -10,5 +10,9 @@
 	<string>Step Alarm counts your steps to turn the alarm off.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 </dict>
 </plist>

@@ -9,6 +9,9 @@ final class SubscriptionStore {
 
     static let monthlyID = "alarm7.pro.monthly"
     static let yearlyID = "alarm7.pro.yearly"   // must match the ID in App Store Connect
+    /// Pro isn't on sale yet: the paywall shows "Coming soon" and nothing can
+    /// be bought. Flip to true once the subscriptions exist in App Store Connect.
+    static let purchasesEnabled = false
 
     private(set) var products: [Product] = []
     private(set) var isPro = false

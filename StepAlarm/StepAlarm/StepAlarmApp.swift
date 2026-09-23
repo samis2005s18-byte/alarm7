@@ -10,6 +10,9 @@ struct StepAlarmApp: App {
                 // back to iOS system blue, which is exactly the stray color
                 // this app is trying to avoid outside the step ring.
                 .tint(Theme.neutralActive)
+                // The app's look is black everywhere, whatever the phone's
+                // Light/Dark setting.
+                .preferredColorScheme(.dark)
         }
     }
 }

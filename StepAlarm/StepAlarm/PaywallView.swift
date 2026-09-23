@@ -48,7 +48,18 @@ struct PaywallView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if store.isPro {
+                    if !SubscriptionStore.purchasesEnabled {
+                        Text("Coming soon")
+                            .font(.headline)
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 6)
+                            .background(Color.white, in: Capsule())
+                        Text("Pro subscriptions aren't available yet. Everything in the free version works today.")
+                            .font(.callout)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(Theme.textSecondary)
+                    } else if store.isPro {
                         Text("Thanks for subscribing. Manage your plan in Settings > Apple ID > Subscriptions.")
                             .font(.callout)
                             .multilineTextAlignment(.center)
@@ -72,7 +83,7 @@ struct PaywallView: View {
                         }
                     }
 
-                    if let message = store.errorMessage {
+                    if SubscriptionStore.purchasesEnabled, let message = store.errorMessage {
                         Text(message)
                             .font(.caption)
                             .multilineTextAlignment(.center)
@@ -82,7 +93,14 @@ struct PaywallView: View {
                 .padding(.bottom, 16)
             }
 
-            if !store.isPro {
+            if !SubscriptionStore.purchasesEnabled {
+                Text("Coming soon")
+                    .font(.headline)
+                    .foregroundStyle(Theme.textSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(Theme.surface, in: Capsule())
+            } else if !store.isPro {
                 Text("Auto-renews until cancelled. Cancel anytime in Settings.")
                     .font(.caption)
                     .multilineTextAlignment(.center)
@@ -137,7 +155,9 @@ struct PaywallView: View {
         .padding(.horizontal, 20)
         .padding(.bottom, 12)
         .background(Theme.background.ignoresSafeArea())
-        .task { await store.start() }
+        .task {
+            if SubscriptionStore.purchasesEnabled { await store.start() }
+        }
         .onChange(of: store.isPro) { _, isPro in
             if isPro { onClose() }
         }

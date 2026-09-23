@@ -37,6 +37,62 @@ enum AlarmGoals {
         set { UserDefaults.standard.set(newValue.map(\.uuidString), forKey: reRingKey) }
     }
 
+    // MARK: Backup rings
+    //
+    // Every alarm is followed by pre-scheduled backup rings. They only get
+    // cancelled once the steps are walked, so dismissing the system alert
+    // (its X / Stop button) can't end the alarm on its own.
+
+    private static let backupsKey = "stepalarm.backups"          // parent ID -> backup IDs
+    private static let ringWindowsKey = "stepalarm.ringWindows"  // parent ID -> [start, end]
+
+    static func backups(for parent: UUID) -> [UUID] {
+        (backupMap()[parent.uuidString] ?? []).compactMap(UUID.init)
+    }
+
+    static func setBackups(_ ids: [UUID], for parent: UUID) {
+        var map = backupMap()
+        map[parent.uuidString] = ids.isEmpty ? nil : ids.map(\.uuidString)
+        UserDefaults.standard.set(map, forKey: backupsKey)
+    }
+
+    /// The alarm a backup (or re-ring) belongs to.
+    static func parent(of id: UUID) -> UUID? {
+        backupMap().first { $0.value.contains(id.uuidString) }.flatMap { UUID(uuidString: $0.key) }
+    }
+
+    /// From the first ring until the last backup, the alarm counts as "ringing".
+    static func setRingWindow(start: Date, end: Date, for parent: UUID) {
+        var windows = ringWindows()
+        windows[parent.uuidString] = [start.timeIntervalSince1970, end.timeIntervalSince1970]
+        UserDefaults.standard.set(windows, forKey: ringWindowsKey)
+    }
+
+    static func clearRingWindow(for parent: UUID) {
+        var windows = ringWindows()
+        windows[parent.uuidString] = nil
+        UserDefaults.standard.set(windows, forKey: ringWindowsKey)
+    }
+
+    static func isRinging(_ parent: UUID, now: Date = .now) -> Bool {
+        guard let window = ringWindows()[parent.uuidString], window.count == 2 else { return false }
+        let t = now.timeIntervalSince1970
+        return t >= window[0] && t <= window[1]
+    }
+
+    /// An alarm that has started ringing and hasn't been walked off yet.
+    static func ringingParent(now: Date = .now) -> UUID? {
+        ringWindows().keys.compactMap(UUID.init).first { isRinging($0, now: now) }
+    }
+
+    private static func backupMap() -> [String: [String]] {
+        UserDefaults.standard.dictionary(forKey: backupsKey) as? [String: [String]] ?? [:]
+    }
+
+    private static func ringWindows() -> [String: [Double]] {
+        UserDefaults.standard.dictionary(forKey: ringWindowsKey) as? [String: [Double]] ?? [:]
+    }
+
     private static func load() -> [String: AlarmRingSettings] {
         guard let data = UserDefaults.standard.data(forKey: settingsKey),
               let decoded = try? JSONDecoder().decode([String: AlarmRingSettings].self, from: data)
@@ -67,6 +123,9 @@ final class AlarmScheduler {
 
     /// Seconds before the alarm rings again after Stop is tapped without walking.
     static let reRingDelay: TimeInterval = 20
+    /// Backup rings after each alarm: one every `backupInterval`, `backupCount` times.
+    static let backupCount = 10
+    static let backupInterval: TimeInterval = 60
 
     private static let weekdays: [Locale.Weekday] = [
         .sunday, .monday, .tuesday, .wednesday, .thursday, .friday, .saturday,
@@ -95,6 +154,7 @@ final class AlarmScheduler {
     /// Schedules a saved alarm: once (next occurrence of hour:minute) or
     /// weekly on the chosen days.
     func schedule(_ item: AlarmItem) async {
+        await cancelBackups(of: item.id)
         let time = Alarm.Schedule.Relative.Time(hour: item.hour, minute: item.minute)
         let repeats: Alarm.Schedule.Relative.Recurrence =
             item.days.isEmpty ? .never : .weekly(item.days.sorted().map { Self.weekdays[$0] })
@@ -104,22 +164,76 @@ final class AlarmScheduler {
             snoozeEnabled: item.snoozeEnabled, vibrationEnabled: item.vibrationEnabled,
             hour: item.hour, minute: item.minute
         )
+        await scheduleBackups(for: item)
     }
 
     /// Test alarm: fires N seconds from now with a 15-step goal.
     func scheduleTestAlarm(secondsFromNow: TimeInterval = 120) async {
+        let id = UUID()
         let fire = Date().addingTimeInterval(secondsFromNow)
         let comps = Calendar.current.dateComponents([.hour, .minute], from: fire)
+        let hour = comps.hour ?? 0, minute = comps.minute ?? 0
         await submit(
-            id: UUID(), schedule: .fixed(fire), steps: 15, label: "", snoozeEnabled: true, vibrationEnabled: true,
-            hour: comps.hour ?? 0, minute: comps.minute ?? 0
+            id: id, schedule: .fixed(fire), steps: 15, label: "", snoozeEnabled: true, vibrationEnabled: true,
+            hour: hour, minute: minute
+        )
+        await scheduleBackups(
+            parent: id, firstRing: fire, steps: 15, label: "", vibrationEnabled: true, hour: hour, minute: minute
         )
     }
 
+    /// Queues the backup rings for an alarm's next occurrence.
+    func scheduleBackups(for item: AlarmItem) async {
+        guard let next = item.nextRingDate() else { return }
+        await scheduleBackups(
+            parent: item.id, firstRing: next, steps: item.steps, label: item.label,
+            vibrationEnabled: item.vibrationEnabled, hour: item.hour, minute: item.minute
+        )
+    }
+
+    private func scheduleBackups(
+        parent: UUID, firstRing: Date, steps: Int, label: String, vibrationEnabled: Bool, hour: Int, minute: Int
+    ) async {
+        await cancelBackups(of: parent)
+        var ids: [UUID] = []
+        for k in 1...Self.backupCount {
+            let id = UUID()
+            ids.append(id)
+            await submit(
+                id: id, schedule: .fixed(firstRing.addingTimeInterval(Double(k) * Self.backupInterval)),
+                steps: steps, label: label, snoozeEnabled: true, vibrationEnabled: vibrationEnabled,
+                hour: hour, minute: minute
+            )
+        }
+        AlarmGoals.setBackups(ids, for: parent)
+        let end = firstRing.addingTimeInterval(Double(Self.backupCount + 1) * Self.backupInterval)
+        AlarmGoals.setRingWindow(start: firstRing, end: end, for: parent)
+    }
+
+    /// Removes an alarm's queued backup rings.
+    func cancelBackups(of parent: UUID) async {
+        for id in AlarmGoals.backups(for: parent) {
+            try? await AlarmManager.shared.stop(id: id)
+            try? await AlarmManager.shared.cancel(id: id)
+        }
+        AlarmGoals.setBackups([], for: parent)
+        AlarmGoals.clearRingWindow(for: parent)
+    }
+
+    /// Steps walked: silence this alarm and everything queued to ring it again.
+    func finishRinging(alarmID: UUID) async {
+        let parent = AlarmGoals.parent(of: alarmID) ?? alarmID
+        await stopAlarm(alarmID)
+        await stopAlarm(parent)
+        await cancelBackups(of: parent)
+        await cancelReRings()
+    }
+
     /// Rings again shortly after the system Stop button was tapped.
-    func scheduleReRing(steps: Int, label: String, vibrationEnabled: Bool, hour: Int, minute: Int) async {
+    func scheduleReRing(parent: UUID, steps: Int, label: String, vibrationEnabled: Bool, hour: Int, minute: Int) async {
         let id = UUID()
         AlarmGoals.reRingIDs.append(id)
+        AlarmGoals.setBackups(AlarmGoals.backups(for: parent) + [id], for: parent)
         let fire = Date().addingTimeInterval(Self.reRingDelay)
         await submit(
             id: id, schedule: .fixed(fire), steps: steps, label: label, snoozeEnabled: true,
@@ -182,6 +296,7 @@ final class AlarmScheduler {
     func cancel(_ id: UUID) async {
         try? await AlarmManager.shared.stop(id: id)
         try? await AlarmManager.shared.cancel(id: id)
+        await cancelBackups(of: id)
     }
 
     /// Silences and removes every pending re-ring alarm.

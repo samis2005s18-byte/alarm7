@@ -207,6 +207,10 @@ final class AlarmStore {
                 await AlarmScheduler.shared.schedule(item)
             }
         }
+        // Repeating alarms need their backup rings queued for the next occurrence.
+        for item in alarms where item.isOn && !item.days.isEmpty && AlarmGoals.backups(for: item.id).isEmpty {
+            await AlarmScheduler.shared.scheduleBackups(for: item)
+        }
         save()
     }
 

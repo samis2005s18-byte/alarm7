@@ -67,7 +67,7 @@ final class WalkSession {
     /// If an alarm is ringing while the app comes to the foreground, go
     /// straight to the walking screen.
     func resumeIfAlarmRinging() {
-        guard !isActive, let id = AlarmScheduler.shared.alertingAlarmID() else { return }
+        guard !isActive, let id = AlarmScheduler.shared.alertingAlarmID() ?? AlarmGoals.ringingParent() else { return }
         begin(alarmID: id)
     }
 
@@ -116,6 +116,9 @@ final class WalkSession {
                 }
             }
         } else {
+            // Tapping "Walk" dismisses the system alarm, so keep it audible here
+            // until the steps are done.
+            AlarmSound.shared.start()
             startPedometer()
         }
     }
@@ -261,7 +264,8 @@ final class WalkSession {
     private func complete() {
         guard !isComplete else { return }
         isComplete = true
-        completedAlarmID = alarmID
+        // A backup ring belongs to the saved alarm it re-rings for.
+        completedAlarmID = alarmID.map { AlarmGoals.parent(of: $0) ?? $0 }
         completedAlarmHour = hour
         completedAlarmMinute = minute
         Theme.success()
@@ -270,9 +274,13 @@ final class WalkSession {
         let demo = isDemo
         let showsOffer = !demo && !SubscriptionStore.shared.isPro
         Task {
-            if !demo {
-                if let id { await AlarmScheduler.shared.stopAlarm(id) }
-                await AlarmScheduler.shared.cancelReRings()
+            if !demo, let id {
+                let parent = AlarmGoals.parent(of: id) ?? id
+                await AlarmScheduler.shared.finishRinging(alarmID: id)
+                // A repeating alarm needs its backup rings queued again for next time.
+                if let item = AlarmStore.shared.alarms.first(where: { $0.id == parent }), item.isOn, !item.days.isEmpty {
+                    await AlarmScheduler.shared.scheduleBackups(for: item)
+                }
             }
             try? await Task.sleep(for: .seconds(showsOffer ? 6 : 2))
             close()
@@ -289,11 +297,13 @@ final class WalkSession {
     private func stopCounting() {
         pedometer.stopUpdates()
         activityManager.stopActivityUpdates()
+        AlarmSound.shared.stop()
         demoTask?.cancel()
         demoTask = nil
     }
 
     private func close() {
+        AlarmSound.shared.stop()
         isActive = false
         isComplete = false
         alarmID = nil
