@@ -35,12 +35,16 @@ final class WalkSession {
     /// Tells real walking/running apart from a phone being shaken in place —
     /// only steps taken while iOS says you're on foot are counted.
     @ObservationIgnored private let activityManager = CMMotionActivityManager()
-    @ObservationIgnored private var isRecounting = false
-    @ObservationIgnored private var needsRecount = false
+    /// The pedometer's own count this session, before walk verification.
+    private(set) var rawSteps = 0
+    private var detectedActivity = "…"
+    @ObservationIgnored private var isOnFoot = false
+    /// Pedometer steps waiting for iOS to confirm the user is walking.
+    @ObservationIgnored private var heldSteps: [(date: Date, count: Int)] = []
 
-    /// iOS needs a few seconds of walking before it reports "walking", so steps
-    /// from just before that moment still count.
-    private static let recognitionLeadIn: TimeInterval = 10
+    /// iOS needs several seconds of walking before it reports "walking", so
+    /// steps from just before that moment still count.
+    private static let recognitionLeadIn: TimeInterval = 15
     private static var canVerifyWalking: Bool { CMMotionActivityManager.isActivityAvailable() }
 
     private init() {}
@@ -124,86 +128,112 @@ final class WalkSession {
     }
 
     // MARK: - Counting
+    //
+    // The pedometer alone also counts a phone being shaken, so its steps are
+    // only credited while iOS's live motion detection says the user is on
+    // foot. iOS takes a few seconds to recognise walking, so steps from just
+    // before that moment are held and credited once it does; if iOS instead
+    // says the phone is standing still, the held steps are thrown away.
 
     private func startPedometer() {
         guard CMPedometer.isStepCountingAvailable() else {
             motionMessage = "Step counting isn't available on this device."
             return
         }
+        rawSteps = 0
+        heldSteps = []
+        isOnFoot = false
+        detectedActivity = "…"
         pedometer.startUpdates(from: startDate) { @Sendable [weak self] data, error in
             let count = data?.numberOfSteps.intValue
             let message = error?.localizedDescription
             Task { @MainActor in self?.handlePedometerUpdate(rawCount: count, error: message) }
         }
         if Self.canVerifyWalking {
-            activityManager.startActivityUpdates(to: .main) { [weak self] _ in
-                Task { @MainActor in self?.recount() }
+            activityManager.startActivityUpdates(to: .main) { [weak self] activity in
+                guard let activity else { return }
+                Task { @MainActor in self?.handleActivity(activity) }
             }
         }
     }
 
     private func handlePedometerUpdate(rawCount: Int?, error: String?) {
-        guard Self.canVerifyWalking, error == nil else {
-            apply(count: rawCount, error: error)
+        if let error {
+            apply(count: nil, error: error)
             return
         }
-        recount()
+        guard let rawCount, rawCount > rawSteps else { return }
+        let delta = rawCount - rawSteps
+        rawSteps = rawCount
+        if !Self.canVerifyWalking || isOnFoot {
+            credit(delta)
+        } else {
+            heldSteps.append((Date(), delta))
+        }
+    }
+
+    private func handleActivity(_ activity: CMMotionActivity) {
+        isOnFoot = activity.walking || activity.running
+        detectedActivity = Self.describe(activity)
+        if isOnFoot {
+            // Credit the steps taken while iOS was still recognising the walk.
+            let cutoff = Date().addingTimeInterval(-Self.recognitionLeadIn)
+            credit(heldSteps.filter { $0.date >= cutoff }.reduce(0) { $0 + $1.count })
+            heldSteps = []
+        } else if activity.stationary && activity.confidence != .low {
+            heldSteps = []
+        }
+    }
+
+    private func credit(_ count: Int) {
+        guard count > 0 else { return }
+        // Never more than the pedometer itself has counted.
+        apply(count: min(steps + count, rawSteps), error: nil)
+    }
+
+    /// Temporary on-screen diagnostics while walk detection is being tuned.
+    var diagnostics: String {
+        guard isActive, !isDemo else { return "" }
+        return "Detected: \(detectedActivity) · phone steps: \(rawSteps)"
+    }
+
+    private static func describe(_ activity: CMMotionActivity) -> String {
+        let kind = activity.running ? "running" : activity.walking ? "walking"
+            : activity.stationary ? "standing still" : activity.automotive ? "in a vehicle"
+            : activity.cycling ? "cycling" : "unknown"
+        let confidence = activity.confidence == .high ? "high" : activity.confidence == .medium ? "medium" : "low"
+        return "\(kind) (\(confidence))"
     }
 
     /// Steps taken while the app was suspended (phone locked) are read back
-    /// from the pedometer's history when the app returns to the foreground.
+    /// from history when the app returns to the foreground: only steps inside
+    /// time ranges iOS recorded as walking or running count.
     func refresh() {
         guard isActive, !isDemo, CMPedometer.isStepCountingAvailable() else { return }
-        if Self.canVerifyWalking {
-            recount()
-            return
-        }
-        pedometer.queryPedometerData(from: startDate, to: Date()) { @Sendable [weak self] data, error in
-            let count = data?.numberOfSteps.intValue
-            let message = error?.localizedDescription
-            Task { @MainActor in self?.apply(count: count, error: message) }
-        }
-    }
-
-    // MARK: - Walking verification
-
-    /// Recomputes the step count from history: only steps inside the time
-    /// ranges iOS classified as walking or running are added up, so shaking
-    /// the phone while standing still never counts.
-    private func recount() {
-        guard isActive, !isComplete, !isDemo else { return }
-        if isRecounting {
-            needsRecount = true
-            return
-        }
-        isRecounting = true
         let sessionStart = startDate
         Task {
             let now = Date()
+            let total = await querySteps(from: sessionStart, to: now)
+            rawSteps = max(rawSteps, total)
+            guard Self.canVerifyWalking else {
+                apply(count: total, error: nil)
+                return
+            }
             // Look back a bit so an activity already in progress at the start is included.
             let activities = await queryActivities(from: sessionStart.addingTimeInterval(-600), to: now)
-            var total = 0
+            var verified = 0
             for interval in Self.onFootIntervals(activities, sessionStart: sessionStart, now: now) {
-                total += await querySteps(from: interval.start, to: interval.end)
+                verified += await querySteps(from: interval.start, to: interval.end)
             }
-            isRecounting = false
-            apply(count: total, error: nil)
-            if needsRecount {
-                needsRecount = false
-                recount()
-            }
+            apply(count: min(verified, rawSteps), error: nil)
         }
-    }
-
-    private static func isOnFoot(_ activity: CMMotionActivity) -> Bool {
-        (activity.walking || activity.running) && activity.confidence != .low
     }
 
     /// Merged time ranges (within this session) during which the user was on foot.
     private static func onFootIntervals(_ activities: [CMMotionActivity], sessionStart: Date, now: Date) -> [DateInterval] {
         let sorted = activities.sorted { $0.startDate < $1.startDate }
         var result: [DateInterval] = []
-        for (i, activity) in sorted.enumerated() where isOnFoot(activity) {
+        for (i, activity) in sorted.enumerated() where activity.walking || activity.running {
             let end = i + 1 < sorted.count ? sorted[i + 1].startDate : now
             let start = max(sessionStart, activity.startDate.addingTimeInterval(-recognitionLeadIn))
             guard end > start else { continue }

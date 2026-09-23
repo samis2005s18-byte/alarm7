@@ -14,6 +14,8 @@ struct WakeUpView: View {
     var errorMessage: String? = nil
     /// Free tier only — offered once, right after a one-time alarm rings.
     var repeatOffer: RepeatOffer? = nil
+    /// Small gray line showing what the phone detects (temporary, for tuning).
+    var diagnostics: String = ""
 
     struct RepeatOffer {
         var nextTime: Date
@@ -46,7 +48,9 @@ struct WakeUpView: View {
 
             Spacer(minLength: Theme.Spacing.lg)
 
-            Color.clear
+            Text(isComplete ? "" : diagnostics)
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.45))
                 .frame(height: Theme.minTapTarget)
                 .padding(.bottom, Theme.Spacing.lg)
         }
@@ -171,7 +175,8 @@ struct WakeUpScreen: View {
                 label: session.label,
                 statusText: session.progressStatus,
                 errorMessage: session.motionMessage,
-                repeatOffer: repeatOffer
+                repeatOffer: repeatOffer,
+                diagnostics: session.diagnostics
             )
         }
         .sheet(isPresented: $showPaywall) {
