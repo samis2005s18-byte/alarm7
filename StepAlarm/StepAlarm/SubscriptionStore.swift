@@ -12,6 +12,9 @@ final class SubscriptionStore {
     /// Pro isn't on sale yet: the paywall shows "Coming soon" and nothing can
     /// be bought. Flip to true once the subscriptions exist in App Store Connect.
     static let purchasesEnabled = false
+    /// Pro is hidden for now: no paywall, crown or subscription settings are
+    /// shown, and everyone gets every feature. Flip to true to bring Pro back.
+    static let proVisible = false
 
     private(set) var products: [Product] = []
     private(set) var isPro = false
@@ -19,6 +22,9 @@ final class SubscriptionStore {
     private(set) var errorMessage: String?
 
     @ObservationIgnored private var updatesTask: Task<Void, Never>?
+
+    /// Whether Pro features (more alarms, higher step goals, repeat) are unlocked.
+    var hasFullAccess: Bool { !Self.proVisible || isPro }
 
     var monthly: Product? { products.first { $0.id == Self.monthlyID } }
     var yearly: Product? { products.first { $0.id == Self.yearlyID } }

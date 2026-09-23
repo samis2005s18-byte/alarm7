@@ -82,7 +82,9 @@ struct ContentView: View {
                         }
                         .buttonStyle(.pressable)
                         .accessibilityLabel("Settings")
-                        .onLongPressGesture(minimumDuration: 0.6) { showTests = true }
+                        .onLongPressGesture(minimumDuration: 0.6) {
+                            if AppConfig.showDeveloperTools { showTests = true }
+                        }
                         Button(action: addAlarm) {
                             Image(systemName: "plus")
                                 .foregroundStyle(Theme.textPrimary)
@@ -121,7 +123,7 @@ struct ContentView: View {
                     // The one moment the paywall is allowed to appear
                     // unprompted — right after the very first alarm ever
                     // created, never before it.
-                    if isFirstEver && !SubscriptionStore.shared.isPro && SubscriptionStore.purchasesEnabled {
+                    if isFirstEver && !SubscriptionStore.shared.hasFullAccess && SubscriptionStore.purchasesEnabled {
                         showPaywall = true
                     }
                 },
@@ -238,7 +240,7 @@ struct ContentView: View {
                 showPermissionAlert = true
                 return
             }
-            if !SubscriptionStore.shared.isPro && store.alarms.count >= AlarmStore.freeAlarmLimit {
+            if !SubscriptionStore.shared.hasFullAccess && store.alarms.count >= AlarmStore.freeAlarmLimit {
                 showPaywall = true
             } else {
                 sheetAlarm = .new(defaultSteps: settings.defaultSteps)

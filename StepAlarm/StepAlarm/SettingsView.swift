@@ -24,7 +24,7 @@ struct SettingsView: View {
                 Section("Defaults") {
                     Stepper(
                         value: Binding(get: { settings.defaultSteps }, set: { settings.defaultSteps = $0 }),
-                        in: 1...(subscriptions.isPro ? 30 : 15)
+                        in: 1...(subscriptions.hasFullAccess ? 30 : 15)
                     ) {
                         Label {
                             Text("Default steps: \(settings.defaultSteps)")
@@ -62,28 +62,30 @@ struct SettingsView: View {
                     Text("Both are required for alarms to ring reliably and count real steps.")
                 }
 
-                Section("Subscription") {
-                    if !SubscriptionStore.purchasesEnabled {
-                        HStack {
-                            Label("Alarm7 Pro", systemImage: "crown.fill")
-                            Spacer()
-                            Text("Coming soon")
-                                .font(.subheadline)
-                                .foregroundStyle(Theme.textSecondary)
+                if SubscriptionStore.proVisible {
+                    Section("Subscription") {
+                        if !SubscriptionStore.purchasesEnabled {
+                            HStack {
+                                Label("Alarm7 Pro", systemImage: "crown.fill")
+                                Spacer()
+                                Text("Coming soon")
+                                    .font(.subheadline)
+                                    .foregroundStyle(Theme.textSecondary)
+                            }
+                        } else if subscriptions.isPro {
+                            Label("Alarm7 Pro is active", systemImage: "checkmark.seal.fill")
+                                .foregroundStyle(Theme.textPrimary)
+                        } else {
+                            Button { onShowPaywall() } label: {
+                                Label("Upgrade to Pro", systemImage: "crown.fill")
+                            }
                         }
-                    } else if subscriptions.isPro {
-                        Label("Alarm7 Pro is active", systemImage: "checkmark.seal.fill")
-                            .foregroundStyle(Theme.textPrimary)
-                    } else {
-                        Button { onShowPaywall() } label: {
-                            Label("Upgrade to Pro", systemImage: "crown.fill")
-                        }
-                    }
-                    if SubscriptionStore.purchasesEnabled {
-                        Button {
-                            Task { await subscriptions.restore() }
-                        } label: {
-                            Label("Restore Purchases", systemImage: "arrow.clockwise")
+                        if SubscriptionStore.purchasesEnabled {
+                            Button {
+                                Task { await subscriptions.restore() }
+                            } label: {
+                                Label("Restore Purchases", systemImage: "arrow.clockwise")
+                            }
                         }
                     }
                 }

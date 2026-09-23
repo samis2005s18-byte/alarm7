@@ -183,7 +183,7 @@ final class AlarmStore {
     /// alarms instead of being deleted or quietly continuing to repeat for
     /// free. Call this whenever the app becomes active.
     func downgradeRepeatingAlarmsIfNeeded() async {
-        guard !SubscriptionStore.shared.isPro else { return }
+        guard !SubscriptionStore.shared.hasFullAccess else { return }
         var toReschedule: [AlarmItem] = []
         for i in alarms.indices where !alarms[i].days.isEmpty {
             alarms[i].days = []

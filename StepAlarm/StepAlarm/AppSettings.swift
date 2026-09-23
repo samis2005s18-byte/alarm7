@@ -1,6 +1,14 @@
 import Foundation
 import Observation
 
+/// Developer switches — both off for App Store builds.
+enum AppConfig {
+    /// Long-press the Settings gear for test alarms and demos.
+    static let showDeveloperTools = false
+    /// Gray line on the Wake Up screen comparing step counters.
+    static let showStepDiagnostics = false
+}
+
 /// App-wide preferences: defaults used when creating a new alarm, plus
 /// first-run state (onboarding, first alarm saved) used to gate when the
 /// paywall and onboarding flow are allowed to appear.

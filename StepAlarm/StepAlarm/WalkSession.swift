@@ -206,7 +206,7 @@ final class WalkSession {
 
     /// Temporary on-screen diagnostics while step detection is being tuned.
     var diagnostics: String {
-        guard isActive, !isDemo else { return "" }
+        guard AppConfig.showStepDiagnostics, isActive, !isDemo else { return "" }
         return "Counted: \(steps) · iPhone counter: \(rawSteps) · shakes blocked: \(shakesBlocked)"
     }
 
@@ -321,7 +321,7 @@ final class WalkSession {
         stopCounting()
         let id = alarmID
         let demo = isDemo
-        let showsOffer = !demo && !SubscriptionStore.shared.isPro
+        let showsOffer = !demo && !SubscriptionStore.shared.hasFullAccess
         Task {
             if !demo, let id {
                 let parent = AlarmGoals.parent(of: id) ?? id

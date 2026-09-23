@@ -197,7 +197,7 @@ struct WakeUpScreen: View {
     /// re-enabling it for tomorrow with a single tap.
     private var repeatOffer: WakeUpView.RepeatOffer? {
         guard session.isComplete, !session.isDemo, let id = session.completedAlarmID,
-              !SubscriptionStore.shared.isPro
+              !SubscriptionStore.shared.hasFullAccess
         else { return nil }
         let nextTime = Calendar.current.date(
             bySettingHour: session.completedAlarmHour, minute: session.completedAlarmMinute, second: 0, of: .now

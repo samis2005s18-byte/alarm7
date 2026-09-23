@@ -18,7 +18,7 @@ struct AddAlarmView: View {
     @State private var vibrationEnabled: Bool
     @State private var showPaywall = false
 
-    private var isPro: Bool { SubscriptionStore.shared.isPro }
+    private var isPro: Bool { SubscriptionStore.shared.hasFullAccess }
     private static let freeStepLimit = 15
     private static let proStepLimit = 30
     private static let dayLetters = ["S", "M", "T", "W", "T", "F", "S"]
