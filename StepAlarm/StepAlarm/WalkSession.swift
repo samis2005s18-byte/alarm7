@@ -33,29 +33,19 @@ final class WalkSession {
     private var startDate = Date()
     private var demoTask: Task<Void, Never>?
     @ObservationIgnored private let pedometer = CMPedometer()
-    /// iOS's own walking/running detection — used to confirm a real walk
-    /// before the alarm is allowed to turn off.
+    /// iOS's walking/running history — used to credit steps walked while the
+    /// app couldn't run (e.g. it was closed and reopened).
     @ObservationIgnored private let activityManager = CMMotionActivityManager()
-    /// Raw motion sensors — used to spot a phone being shaken, instantly.
+    /// Raw motion sensors at 50 Hz, fed to `StepDetector` for instant,
+    /// shake-proof step counting.
     @ObservationIgnored private let motionManager = CMMotionManager()
-    /// The pedometer's own count this session, before shake filtering.
+    @ObservationIgnored private var detector = StepDetector()
+    /// The iPhone's own step count this session (it also counts shaking) —
+    /// shown for comparison and used if the motion sensors aren't available.
     private(set) var rawSteps = 0
-    private var detectedActivity = "…"
-    private var isShaking = false
-    /// iOS has reported walking or running at least once this session.
-    @ObservationIgnored private var walkConfirmed = false
-    @ObservationIgnored private var motionSamples: [(acceleration: Double, rotation: Double)] = []
-    @ObservationIgnored private var lastShakeDate: Date?
+    private var shakesBlocked = 0
 
-    /// Shaking a phone moves and spins it far harder than walking or running
-    /// with it (in hand or pocket). Averages over the last second, in g and rad/s.
-    private static let shakeAccelerationThreshold = 1.2
-    private static let shakeRotationThreshold = 5.0
-    /// Pedometer steps arrive a moment late, so steps just after shaking are ignored too.
-    private static let shakeCooldown: TimeInterval = 3
-    /// If iOS never confirms walking, this many extra shake-free steps are enough.
-    private static let unconfirmedExtraSteps = 20
-    /// Steps from the seconds before iOS recognised a walk still count after a lock-screen gap.
+    /// Steps from the seconds before iOS recognised a walk still count in history.
     private static let recognitionLeadIn: TimeInterval = 15
     private static var canVerifyWalking: Bool { CMMotionActivityManager.isActivityAvailable() }
 
@@ -141,99 +131,65 @@ final class WalkSession {
 
     // MARK: - Counting
     //
-    // Steps show up the moment the pedometer reports them, except while the
-    // motion sensors say the phone is being shaken. On top of that, the alarm
-    // only turns off once iOS has confirmed an actual walk or run.
+    // Steps are detected straight from the motion sensors (see StepDetector),
+    // so each one counts the moment it happens and shaking is rejected. The
+    // alarm-sound background mode keeps this running with the screen locked.
+
+    private var usesStepDetector: Bool { motionManager.isDeviceMotionAvailable }
 
     private func startPedometer() {
-        guard CMPedometer.isStepCountingAvailable() else {
-            motionMessage = "Step counting isn't available on this device."
+        rawSteps = 0
+        shakesBlocked = 0
+        detector = StepDetector()
+        if CMPedometer.isStepCountingAvailable() {
+            pedometer.startUpdates(from: startDate) { @Sendable [weak self] data, error in
+                let count = data?.numberOfSteps.intValue
+                let message = error?.localizedDescription
+                Task { @MainActor in self?.handlePedometerUpdate(rawCount: count, error: message) }
+            }
+        }
+        guard usesStepDetector else {
+            if !CMPedometer.isStepCountingAvailable() {
+                motionMessage = "Step counting isn't available on this device."
+            }
             return
         }
-        rawSteps = 0
-        walkConfirmed = false
-        isShaking = false
-        lastShakeDate = nil
-        motionSamples = []
-        detectedActivity = "…"
-        pedometer.startUpdates(from: startDate) { @Sendable [weak self] data, error in
-            let count = data?.numberOfSteps.intValue
-            let message = error?.localizedDescription
-            Task { @MainActor in self?.handlePedometerUpdate(rawCount: count, error: message) }
-        }
-        if Self.canVerifyWalking {
-            activityManager.startActivityUpdates(to: .main) { [weak self] activity in
-                guard let activity else { return }
-                Task { @MainActor in self?.handleActivity(activity) }
-            }
-        }
-        if motionManager.isDeviceMotionAvailable {
-            motionManager.deviceMotionUpdateInterval = 1.0 / 50
-            motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
-                guard let motion else { return }
-                let a = motion.userAcceleration
-                let r = motion.rotationRate
-                let acceleration = (a.x * a.x + a.y * a.y + a.z * a.z).squareRoot()
-                let rotation = (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot()
-                MainActor.assumeIsolated {
-                    self?.addMotionSample(acceleration: acceleration, rotation: rotation)
-                }
-            }
+        motionManager.deviceMotionUpdateInterval = 1.0 / 50
+        motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, _ in
+            guard let motion else { return }
+            let a = motion.userAcceleration
+            let g = motion.gravity
+            let r = motion.rotationRate
+            let sample = StepDetector.Sample(
+                time: motion.timestamp,
+                // Gravity points down, so flip the sign to make "up" positive.
+                vertical: -(a.x * g.x + a.y * g.y + a.z * g.z),
+                rotation: (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot()
+            )
+            MainActor.assumeIsolated { self?.handleMotion(sample) }
         }
     }
 
-    private func addMotionSample(acceleration: Double, rotation: Double) {
-        motionSamples.append((acceleration, rotation))
-        if motionSamples.count > 50 { motionSamples.removeFirst(motionSamples.count - 50) }
-        let n = Double(motionSamples.count)
-        let meanAcceleration = motionSamples.reduce(0) { $0 + $1.acceleration } / n
-        let meanRotation = motionSamples.reduce(0) { $0 + $1.rotation } / n
-        if meanAcceleration > Self.shakeAccelerationThreshold || meanRotation > Self.shakeRotationThreshold {
-            lastShakeDate = Date()
-        }
-        let shaking = lastShakeDate.map { Date().timeIntervalSince($0) < Self.shakeCooldown } ?? false
-        if shaking != isShaking { isShaking = shaking }
+    private func handleMotion(_ sample: StepDetector.Sample) {
+        let newSteps = detector.add(sample)
+        if detector.rejectedShakes != shakesBlocked { shakesBlocked = detector.rejectedShakes }
+        if newSteps > 0 { apply(count: steps + newSteps, error: nil) }
     }
 
     private func handlePedometerUpdate(rawCount: Int?, error: String?) {
-        if let error {
+        if let error, !usesStepDetector {
             apply(count: nil, error: error)
             return
         }
         guard let rawCount, rawCount > rawSteps else { return }
-        let delta = rawCount - rawSteps
         rawSteps = rawCount
-        // Steps counted while the phone was being shaken are dropped.
-        guard !isShaking else { return }
-        apply(count: steps + delta, error: nil)
+        if !usesStepDetector { apply(count: rawCount, error: nil) }
     }
 
-    private func handleActivity(_ activity: CMMotionActivity) {
-        detectedActivity = Self.describe(activity)
-        if activity.walking || activity.running {
-            walkConfirmed = true
-            if steps >= goal { complete() }
-        }
-    }
-
-    /// The goal alone isn't enough: iOS must also have seen a real walk (or,
-    /// if it never does, clearly more shake-free steps than the goal).
-    private var canFinish: Bool {
-        isDemo || !Self.canVerifyWalking || walkConfirmed || steps >= goal + Self.unconfirmedExtraSteps
-    }
-
-    /// Temporary on-screen diagnostics while walk detection is being tuned.
+    /// Temporary on-screen diagnostics while step detection is being tuned.
     var diagnostics: String {
         guard isActive, !isDemo else { return "" }
-        return "Detected: \(detectedActivity)\(isShaking ? " · shaking" : "") · phone steps: \(rawSteps)"
-    }
-
-    private static func describe(_ activity: CMMotionActivity) -> String {
-        let kind = activity.running ? "running" : activity.walking ? "walking"
-            : activity.stationary ? "standing still" : activity.automotive ? "in a vehicle"
-            : activity.cycling ? "cycling" : "unknown"
-        let confidence = activity.confidence == .high ? "high" : activity.confidence == .medium ? "medium" : "low"
-        return "\(kind) (\(confidence))"
+        return "Counted: \(steps) · iPhone counter: \(rawSteps) · shakes blocked: \(shakesBlocked)"
     }
 
     /// Steps taken while the app was suspended (phone locked) are read back
@@ -253,12 +209,11 @@ final class WalkSession {
             // Look back a bit so an activity already in progress at the start is included.
             let activities = await queryActivities(from: sessionStart.addingTimeInterval(-600), to: now)
             let intervals = Self.onFootIntervals(activities, sessionStart: sessionStart, now: now)
-            if !intervals.isEmpty { walkConfirmed = true }
             var verified = 0
             for interval in intervals {
                 verified += await querySteps(from: interval.start, to: interval.end)
             }
-            apply(count: min(max(verified, steps), rawSteps), error: nil)
+            apply(count: min(verified, rawSteps), error: nil)
         }
     }
 
@@ -306,14 +261,13 @@ final class WalkSession {
             lastStepDate = Date()
             if vibrationEnabled { Theme.tap() }
         }
-        if steps >= goal && canFinish { complete() }
+        if steps >= goal { complete() }
     }
 
     /// A short line that reacts to progress, shown under the step ring.
     var progressStatus: String {
         if isComplete { return "You're up ☀️" }
         if !isDemo && AVAudioSession.sharedInstance().outputVolume < 0.3 { return "Turn your volume up 🔊" }
-        if steps >= goal { return "Keep walking…" }
         if steps == 0 { return "Start walking…" }
         let ratio = Double(steps) / Double(max(goal, 1))
         return ratio < 0.5 ? "Nice, keep going!" : "Almost there!"
@@ -361,7 +315,6 @@ final class WalkSession {
 
     private func stopCounting() {
         pedometer.stopUpdates()
-        activityManager.stopActivityUpdates()
         motionManager.stopDeviceMotionUpdates()
         AlarmSound.shared.stop()
         demoTask?.cancel()
