@@ -13,6 +13,11 @@ struct SettingsView: View {
     @State private var showTerms = false
     @State private var showPrivacy = false
 
+    init(onClose: @escaping () -> Void, onShowPaywall: @escaping () -> Void) {
+        self.onClose = onClose
+        self.onShowPaywall = onShowPaywall
+    }
+
     var body: some View {
         NavigationStack {
             List {

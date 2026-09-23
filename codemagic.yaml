@@ -1,0 +1,36 @@
+workflows:
+  testflight:
+    name: StepAlarm to TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: StepAlarm key
+    environment:
+      xcode: latest
+      groups:
+        - signing # holds CERTIFICATE_PRIVATE_KEY
+      vars:
+        BUNDLE_ID: "REPLACE_WITH_BUNDLE_ID"
+    scripts:
+      - name: Generate Xcode project
+        script: |
+          command -v xcodegen || brew install xcodegen
+          xcodegen generate
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --strict-match-identifier --create
+          app-store-connect fetch-signing-files "$BUNDLE_ID.StepAlarmWidget" --type IOS_APP_STORE --strict-match-identifier --create
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Set build number
+        script: agvtool new-version -all "$BUILD_NUMBER"
+      - name: Build app
+        script: xcode-project build-ipa --project StepAlarm.xcodeproj --scheme StepAlarm
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

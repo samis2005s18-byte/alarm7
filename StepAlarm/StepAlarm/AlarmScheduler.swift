@@ -144,7 +144,7 @@ final class AlarmScheduler {
 
         let title = label.isEmpty ? "Wake up! Walk \(steps) steps" : "\(label) — walk \(steps) steps"
         let alert = AlarmPresentation.Alert(
-            title: title,
+            title: LocalizedStringResource(stringLiteral: title),
             stopButton: stopButton,
             secondaryButton: walkButton,
             secondaryButtonBehavior: .custom
