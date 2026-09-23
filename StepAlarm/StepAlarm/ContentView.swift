@@ -175,6 +175,11 @@ struct ContentView: View {
             }
             await refresh()
         }
+        .task {
+            // If an alarm goes off while the app is open, go straight to the
+            // full Wake Up screen.
+            await scheduler.watchForRinging { id in session.begin(alarmID: id) }
+        }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .active else { return }
             session.refresh()

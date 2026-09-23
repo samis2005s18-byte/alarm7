@@ -179,9 +179,11 @@ final class WalkSession {
         if confirmedSteps >= goal {
             apply(count: confirmedSteps, error: nil)
         } else {
-            // Each step shows up the moment it's detected; steps still being
-            // checked for a walking rhythm drop back off if they were shaking.
-            showSteps(min(confirmedSteps + detector.pendingSteps, goal - 1))
+            // The first steps show up the moment they're detected (and drop
+            // back off if they were shaking). Once steps are confirmed, only
+            // confirmed steps are shown, so the count never goes backwards.
+            let shown = confirmedSteps > 0 ? confirmedSteps : detector.pendingSteps
+            showSteps(min(shown, goal - 1))
         }
     }
 

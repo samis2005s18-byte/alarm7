@@ -30,7 +30,9 @@ struct StepDetector {
     static let maxInterval = 1.5          // s — slower than this breaks the rhythm
     static let rhythmSteps = 4            // steps in a row before counting starts
     static let maxIntervalRatio = 1.6     // longest/shortest gap allowed while finding the rhythm
-    static let maxRhythmDrift = 0.4       // once counting, each gap must stay within ±40% of the average
+    static let maxRhythmDrift = 0.4       // once counting, each gap should stay within ±40% of the average
+    static let offBeatStepsAllowed = 2    // off-beat steps in a row tolerated once walking is established
+    static let maxPeakJump = 2.5          // a bump this many times harder than the walk's usual step isn't a step
     static let fastPeaksForShake = 2      // this many too-fast bumps within `fastPeakWindow` = shaking
     static let fastPeakWindow = 2.0       // s
 
@@ -50,6 +52,9 @@ struct StepDetector {
     private var intervals: [Double] = []
     private var counting = false
     private var averageInterval = 0.0
+    private var offBeatSteps = 0
+    private var averagePeak = 0.0
+    private var rhythmPeaks: [Double] = []
     private var fastPeakTimes: [TimeInterval] = []
 
     /// Feeds one sample; returns how many steps became newly counted.
@@ -105,24 +110,42 @@ struct StepDetector {
             startRhythm(at: time)
             return 0
         }
+        if counting && amplitude > averagePeak * Self.maxPeakJump {
+            // Suddenly far harder than this walk's steps — likely a shake.
+            offBeatSteps += 1
+            if offBeatSteps > Self.offBeatStepsAllowed { rejectShake() }
+            return 0
+        }
         if counting {
-            // Real walking keeps a steady beat; a sudden change restarts the rhythm check.
-            guard abs(interval - averageInterval) <= averageInterval * Self.maxRhythmDrift else {
-                startRhythm(at: time)
-                return 0
+            // Real walking keeps a roughly steady beat. A turn or an uneven
+            // step or two still counts; only a sustained change restarts the
+            // rhythm check.
+            if abs(interval - averageInterval) > averageInterval * Self.maxRhythmDrift {
+                offBeatSteps += 1
+                guard offBeatSteps <= Self.offBeatStepsAllowed else {
+                    startRhythm(at: time)
+                    return 0
+                }
+                averageInterval += 0.5 * (interval - averageInterval)
+            } else {
+                offBeatSteps = 0
+                averageInterval += 0.3 * (interval - averageInterval)
             }
             lastStepTime = time
-            averageInterval += 0.3 * (interval - averageInterval)
+            averagePeak += 0.2 * (amplitude - averagePeak)
             return 1
         }
         lastStepTime = time
 
         intervals.append(interval)
+        rhythmPeaks.append(amplitude)
         pending += 1
         guard pending >= Self.rhythmSteps else { return 0 }
         if let shortest = intervals.min(), let longest = intervals.max(), longest / shortest <= Self.maxIntervalRatio {
             counting = true
             averageInterval = intervals.reduce(0, +) / Double(intervals.count)
+            averagePeak = rhythmPeaks.reduce(0, +) / Double(max(rhythmPeaks.count, 1))
+            rhythmPeaks = []
             let credited = pending
             pending = 0
             intervals = []
@@ -130,11 +153,14 @@ struct StepDetector {
         }
         // Not steady yet — slide the window forward.
         intervals.removeFirst()
+        if !rhythmPeaks.isEmpty { rhythmPeaks.removeFirst() }
         pending -= 1
         return 0
     }
 
     private mutating func startRhythm(at time: TimeInterval) {
+        offBeatSteps = 0
+        rhythmPeaks = []
         lastStepTime = time
         pending = 1
         intervals = []
@@ -148,5 +174,7 @@ struct StepDetector {
         intervals = []
         counting = false
         fastPeakTimes = []
+        rhythmPeaks = []
+        offBeatSteps = 0
     }
 }

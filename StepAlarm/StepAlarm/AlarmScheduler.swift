@@ -316,6 +316,16 @@ final class AlarmScheduler {
         return Set(alarms.map(\.id))
     }
 
+    /// Calls `onRing` whenever an alarm starts ringing while the app is open,
+    /// so the Wake Up screen can take over instead of only the system banner.
+    func watchForRinging(_ onRing: @escaping @MainActor (UUID) -> Void) async {
+        for await alarms in AlarmManager.shared.alarmUpdates {
+            if let ringing = alarms.first(where: { $0.state == .alerting }) {
+                await onRing(ringing.id)
+            }
+        }
+    }
+
     /// The alarm that is ringing right now, if any.
     func alertingAlarmID() -> UUID? {
         guard let alarms = try? AlarmManager.shared.alarms else { return nil }
