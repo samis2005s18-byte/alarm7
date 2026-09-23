@@ -1,4 +1,6 @@
+import CoreMotion
 import SwiftUI
+import UIKit
 
 /// Home screen: native large-title list (like Clock's Alarms tab), a
 /// "next alarm in…" card, icon-labelled rows, and real swipe-to-delete.
@@ -15,12 +17,17 @@ struct ContentView: View {
     @State private var showTests = false
     @State private var sheetAlarm: AlarmItem?
     @State private var toastMessage: ToastMessage?
+    @State private var showPermissionAlert = false
 
     var body: some View {
         NavigationStack {
             List {
-                if !scheduler.isAuthorized {
-                    Section { note("Alarm permission is off. Enable it in Settings.", isError: true) }
+                if !hasPermissions {
+                    Section {
+                        Button { openSettings() } label: {
+                            note("To set alarms, allow Alarms and Motion & Fitness. Tap to open Settings.", isError: true)
+                        }
+                    }
                 }
                 if let error = scheduler.lastError {
                     Section { note(error, isError: true) }
@@ -97,6 +104,11 @@ struct ContentView: View {
                         sheetAlarm = nil
                         return
                     }
+                    guard hasPermissions else {
+                        sheetAlarm = nil
+                        showPermissionAlert = true
+                        return
+                    }
                     sheetAlarm = nil
                     let isFirstEver = !settings.hasSavedFirstAlarm
                     settings.hasSavedFirstAlarm = true
@@ -139,6 +151,12 @@ struct ContentView: View {
             )
             .presentationDetents([.medium])
         }
+        .alert("Permissions needed", isPresented: $showPermissionAlert) {
+            Button("Open Settings") { openSettings() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Alarm7 can't set an alarm until both Alarms and Motion & Fitness are allowed. Open Settings, tap Alarm7, and turn both on.")
+        }
         .fullScreenCover(isPresented: Binding(get: { session.isActive }, set: { _ in })) {
             WakeUpScreen()
         }
@@ -168,6 +186,10 @@ struct ContentView: View {
     /// Sync the list with AlarmKit, downgrade any repeats if Pro has lapsed,
     /// and jump to the walk screen if an alarm is ringing.
     private func refresh() async {
+        if settings.hasCompletedOnboarding {
+            // Picks up permissions changed in the Settings app.
+            await scheduler.requestAuthorizationIfNeeded()
+        }
         await store.refreshFromSystem()
         await store.downgradeRepeatingAlarmsIfNeeded()
         session.resumeIfAlarmRinging()
@@ -187,12 +209,40 @@ struct ContentView: View {
         return true
     }
 
+    /// Both Alarms and Motion & Fitness must be allowed — without them an
+    /// alarm couldn't ring or couldn't be walked off.
+    private var hasPermissions: Bool {
+        scheduler.isAuthorized && CMPedometer.authorizationStatus() == .authorized
+    }
+
+    /// Asks for any permission that hasn't been decided yet, then reports
+    /// whether both are allowed.
+    private func ensurePermissions() async -> Bool {
+        await scheduler.requestAuthorizationIfNeeded()
+        if CMPedometer.authorizationStatus() == .notDetermined {
+            _ = await session.requestMotionAuthorization()
+        }
+        return hasPermissions
+    }
+
+    private func openSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(url)
+        }
+    }
+
     /// 3 free alarms, unlimited for Pro.
     private func addAlarm() {
-        if !SubscriptionStore.shared.isPro && store.alarms.count >= AlarmStore.freeAlarmLimit {
-            showPaywall = true
-        } else {
-            sheetAlarm = .new(defaultSteps: settings.defaultSteps)
+        Task {
+            guard await ensurePermissions() else {
+                showPermissionAlert = true
+                return
+            }
+            if !SubscriptionStore.shared.isPro && store.alarms.count >= AlarmStore.freeAlarmLimit {
+                showPaywall = true
+            } else {
+                sheetAlarm = .new(defaultSteps: settings.defaultSteps)
+            }
         }
     }
 
@@ -286,7 +336,13 @@ struct ContentView: View {
                     set: { on in
                         if !on && blockIfRinging(alarm.id) { return }
                         Theme.tap()
-                        Task { await store.setEnabled(alarm.id, on) }
+                        Task {
+                            if on, !(await ensurePermissions()) {
+                                showPermissionAlert = true
+                                return
+                            }
+                            await store.setEnabled(alarm.id, on)
+                        }
                     }
                 ))
                 .labelsHidden()

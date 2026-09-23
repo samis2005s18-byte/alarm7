@@ -44,4 +44,6 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
+        # Internal testers get every uploaded build automatically; external
+        # beta review isn't needed (and only allows one build in review at a time).
+        submit_to_testflight: false
