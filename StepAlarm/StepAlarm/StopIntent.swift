@@ -14,6 +14,9 @@ import AlarmKit
 /// sample code; verify against Xcode 26's jump-to-definition.
 struct StopAlarmIntent: LiveActivityIntent {
     static let title: LocalizedStringResource = "Stop Alarm"
+    /// iOS always shows its own X / Stop on an alarm and apps can't remove it,
+    /// so tapping it opens the Wake Up screen — still ringing — just like Walk.
+    static let openAppWhenRun = true
 
     @Parameter(title: "alarmID")
     var alarmIDString: String
@@ -39,6 +42,7 @@ struct StopAlarmIntent: LiveActivityIntent {
                     minute: settings?.minute ?? 0
                 )
             }
+            WalkSession.shared.begin(alarmID: id)
         }
         return .result()
     }

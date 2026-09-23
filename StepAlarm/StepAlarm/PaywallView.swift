@@ -48,18 +48,7 @@ struct PaywallView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if !SubscriptionStore.purchasesEnabled {
-                        Text("Coming soon")
-                            .font(.headline)
-                            .foregroundStyle(.black)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 6)
-                            .background(Color.white, in: Capsule())
-                        Text("Pro subscriptions aren't available yet. Everything in the free version works today.")
-                            .font(.callout)
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(Theme.textSecondary)
-                    } else if store.isPro {
+                    if store.isPro {
                         Text("Thanks for subscribing. Manage your plan in Settings > Apple ID > Subscriptions.")
                             .font(.callout)
                             .multilineTextAlignment(.center)
@@ -93,14 +82,7 @@ struct PaywallView: View {
                 .padding(.bottom, 16)
             }
 
-            if !SubscriptionStore.purchasesEnabled {
-                Text("Coming soon")
-                    .font(.headline)
-                    .foregroundStyle(Theme.textSecondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(Theme.surface, in: Capsule())
-            } else if !store.isPro {
+            if !store.isPro {
                 Text("Auto-renews until cancelled. Cancel anytime in Settings.")
                     .font(.caption)
                     .multilineTextAlignment(.center)
@@ -108,6 +90,7 @@ struct PaywallView: View {
                     .padding(.bottom, 8)
 
                 Button {
+                    guard SubscriptionStore.purchasesEnabled else { return }
                     guard let product = selectedProduct else {
                         Task { await store.loadProducts() }
                         return
@@ -115,7 +98,10 @@ struct PaywallView: View {
                     Task { await store.purchase(product) }
                 } label: {
                     Group {
-                        if store.isBusy {
+                        if !SubscriptionStore.purchasesEnabled {
+                            Label("Coming soon", systemImage: "lock.fill")
+                                .font(.headline)
+                        } else if store.isBusy {
                             ProgressView().tint(Theme.background)
                         } else {
                             Text(selectedProduct == nil ? "Retry loading plans" : "Continue")
@@ -128,9 +114,12 @@ struct PaywallView: View {
                     .background(Theme.textPrimary, in: Capsule())
                 }
                 .buttonStyle(.pressable)
-                .disabled(store.isBusy)
+                .disabled(store.isBusy || !SubscriptionStore.purchasesEnabled)
 
-                Button("Restore Purchases") { Task { await store.restore() } }
+                Button("Restore Purchases") {
+                    guard SubscriptionStore.purchasesEnabled else { return }
+                    Task { await store.restore() }
+                }
                     .buttonStyle(.pressable)
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)

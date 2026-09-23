@@ -1,3 +1,4 @@
+import AudioToolbox
 import AVFoundation
 
 /// Keeps the alarm ringing inside the app while the user walks. Tapping
@@ -8,6 +9,9 @@ final class AlarmSound {
     static let shared = AlarmSound()
 
     private var player: AVAudioPlayer?
+    /// Vibrates alongside the sound, so turning the volume down doesn't make
+    /// the alarm go quiet.
+    private var vibrationTimer: Timer?
 
     private init() {}
 
@@ -27,9 +31,15 @@ final class AlarmSound {
         } catch {
             player = nil
         }
+        vibrationTimer?.invalidate()
+        vibrationTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
+            AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+        }
     }
 
     func stop() {
+        vibrationTimer?.invalidate()
+        vibrationTimer = nil
         guard let player else { return }
         player.stop()
         self.player = nil
