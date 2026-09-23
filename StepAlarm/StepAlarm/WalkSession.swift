@@ -32,6 +32,16 @@ final class WalkSession {
     private var startDate = Date()
     private var demoTask: Task<Void, Never>?
     @ObservationIgnored private let pedometer = CMPedometer()
+    /// Tells real walking/running apart from a phone being shaken in place —
+    /// only steps taken while iOS says you're on foot are counted.
+    @ObservationIgnored private let activityManager = CMMotionActivityManager()
+    @ObservationIgnored private var isRecounting = false
+    @ObservationIgnored private var needsRecount = false
+
+    /// iOS needs a few seconds of walking before it reports "walking", so steps
+    /// from just before that moment still count.
+    private static let recognitionLeadIn: TimeInterval = 10
+    private static var canVerifyWalking: Bool { CMMotionActivityManager.isActivityAvailable() }
 
     private init() {}
 
@@ -120,18 +130,102 @@ final class WalkSession {
         pedometer.startUpdates(from: startDate) { @Sendable [weak self] data, error in
             let count = data?.numberOfSteps.intValue
             let message = error?.localizedDescription
-            Task { @MainActor in self?.apply(count: count, error: message) }
+            Task { @MainActor in self?.handlePedometerUpdate(rawCount: count, error: message) }
         }
+        if Self.canVerifyWalking {
+            activityManager.startActivityUpdates(to: .main) { [weak self] _ in
+                Task { @MainActor in self?.recount() }
+            }
+        }
+    }
+
+    private func handlePedometerUpdate(rawCount: Int?, error: String?) {
+        guard Self.canVerifyWalking, error == nil else {
+            apply(count: rawCount, error: error)
+            return
+        }
+        recount()
     }
 
     /// Steps taken while the app was suspended (phone locked) are read back
     /// from the pedometer's history when the app returns to the foreground.
     func refresh() {
         guard isActive, !isDemo, CMPedometer.isStepCountingAvailable() else { return }
+        if Self.canVerifyWalking {
+            recount()
+            return
+        }
         pedometer.queryPedometerData(from: startDate, to: Date()) { @Sendable [weak self] data, error in
             let count = data?.numberOfSteps.intValue
             let message = error?.localizedDescription
             Task { @MainActor in self?.apply(count: count, error: message) }
+        }
+    }
+
+    // MARK: - Walking verification
+
+    /// Recomputes the step count from history: only steps inside the time
+    /// ranges iOS classified as walking or running are added up, so shaking
+    /// the phone while standing still never counts.
+    private func recount() {
+        guard isActive, !isComplete, !isDemo else { return }
+        if isRecounting {
+            needsRecount = true
+            return
+        }
+        isRecounting = true
+        let sessionStart = startDate
+        Task {
+            let now = Date()
+            // Look back a bit so an activity already in progress at the start is included.
+            let activities = await queryActivities(from: sessionStart.addingTimeInterval(-600), to: now)
+            var total = 0
+            for interval in Self.onFootIntervals(activities, sessionStart: sessionStart, now: now) {
+                total += await querySteps(from: interval.start, to: interval.end)
+            }
+            isRecounting = false
+            apply(count: total, error: nil)
+            if needsRecount {
+                needsRecount = false
+                recount()
+            }
+        }
+    }
+
+    private static func isOnFoot(_ activity: CMMotionActivity) -> Bool {
+        (activity.walking || activity.running) && activity.confidence != .low
+    }
+
+    /// Merged time ranges (within this session) during which the user was on foot.
+    private static func onFootIntervals(_ activities: [CMMotionActivity], sessionStart: Date, now: Date) -> [DateInterval] {
+        let sorted = activities.sorted { $0.startDate < $1.startDate }
+        var result: [DateInterval] = []
+        for (i, activity) in sorted.enumerated() where isOnFoot(activity) {
+            let end = i + 1 < sorted.count ? sorted[i + 1].startDate : now
+            let start = max(sessionStart, activity.startDate.addingTimeInterval(-recognitionLeadIn))
+            guard end > start else { continue }
+            if let last = result.last, start <= last.end {
+                result[result.count - 1] = DateInterval(start: last.start, end: max(last.end, end))
+            } else {
+                result.append(DateInterval(start: start, end: end))
+            }
+        }
+        return result
+    }
+
+    private func queryActivities(from: Date, to: Date) async -> [CMMotionActivity] {
+        await withCheckedContinuation { continuation in
+            activityManager.queryActivityStarting(from: from, to: to, to: .main) { activities, _ in
+                continuation.resume(returning: activities ?? [])
+            }
+        }
+    }
+
+    private func querySteps(from: Date, to: Date) async -> Int {
+        await withCheckedContinuation { continuation in
+            pedometer.queryPedometerData(from: from, to: to) { @Sendable data, _ in
+                continuation.resume(returning: data?.numberOfSteps.intValue ?? 0)
+            }
         }
     }
 
@@ -194,6 +288,7 @@ final class WalkSession {
 
     private func stopCounting() {
         pedometer.stopUpdates()
+        activityManager.stopActivityUpdates()
         demoTask?.cancel()
         demoTask = nil
     }
