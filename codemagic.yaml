@@ -10,7 +10,7 @@ workflows:
       groups:
         - signing # holds CERTIFICATE_PRIVATE_KEY
       vars:
-        BUNDLE_ID: "REPLACE_WITH_BUNDLE_ID"
+        BUNDLE_ID: "sami.amlar"
     scripts:
       - name: Generate Xcode project
         script: |

@@ -35,7 +35,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
         INFOPLIST_FILE: StepAlarm/StepAlarm/Info.plist
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: StepAlarm
+        INFOPLIST_KEY_CFBundleDisplayName: Alarm7
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.lifestyle
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
@@ -56,7 +56,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).StepAlarmWidget
         INFOPLIST_FILE: StepAlarm/StepAlarmWidget/Info.plist
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: StepAlarm
+        INFOPLIST_KEY_CFBundleDisplayName: Alarm7
         SKIP_INSTALL: YES
 schemes:
   StepAlarm:
