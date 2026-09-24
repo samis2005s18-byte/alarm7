@@ -35,7 +35,7 @@ enum LegalText {
     static let terms = """
     **Alarm7 Terms of Use**
 
-    Last updated: September 22, 2026
+    Last updated: September 24, 2026
 
     These Terms of Use ("Terms") are an agreement between you and Sami ("we," "us," "our"), the developer of Alarm7 ("the app"). By downloading or using the app, you agree to these Terms. If you don't agree, don't use the app.
 
@@ -51,15 +51,9 @@ enum LegalText {
 
     We give you a personal, non-transferable, non-exclusive license to use the app on Apple devices you own or control, as allowed by Apple's App Store Terms. You may not copy, modify, reverse engineer, resell, or distribute the app.
 
-    **4. Alarm7 Pro Subscription**
+    **4. Price**
 
-    - Alarm7 Pro is offered as an auto-renewable subscription (monthly or yearly). Prices are shown in the app before purchase and may vary by country.
-    - Payment is charged to your Apple ID account when you confirm your purchase.
-    - Your subscription renews automatically unless you cancel at least 24 hours before the end of the current period. Your account will be charged for renewal within 24 hours before the current period ends.
-    - You can manage or cancel your subscription anytime in your iPhone Settings > [your name] > Subscriptions.
-    - If a free trial is offered, any unused part of it ends when you purchase a subscription.
-    - All purchases are processed by Apple. Refunds are handled by Apple under its policies. You can request one at reportaproblem.apple.com.
-    - We may change subscription prices or features. Apple will notify you of price increases as required, and you may cancel if you don't agree.
+    Alarm7 is currently free, and there is nothing to buy in the app. If we add paid features in the future, we will update these Terms first, and anything you pay for will be processed by Apple and clearly shown in the app before you buy it.
 
     **5. Alarm Reliability**
 
@@ -83,7 +77,7 @@ enum LegalText {
 
     **10. Limitation of Liability**
 
-    To the fullest extent allowed by law, we are not liable for any indirect, incidental, special, or consequential damages, including missed appointments, lost income, or injury from walking, arising from your use of the app. Our total liability to you for any claim will not be more than the amount you paid for the app in the 12 months before the claim. Some places don't allow these limits, so they may not fully apply to you.
+    To the fullest extent allowed by law, we are not liable for any indirect, incidental, special, or consequential damages, including missed appointments, lost income, or injury from walking, arising from your use of the app. Our total liability to you for any claim will not be more than the amount, if any, you paid for the app in the 12 months before the claim. Some places don't allow these limits, so they may not fully apply to you.
 
     **11. Apple**
 
@@ -91,7 +85,7 @@ enum LegalText {
 
     **12. Ending Use**
 
-    You can stop using the app anytime by deleting it. Deleting the app does not cancel your subscription. Cancel it in Settings. We may stop offering or updating the app at any time.
+    You can stop using the app anytime by deleting it. We may stop offering or updating the app at any time.
 
     **13. Changes to These Terms**
 
@@ -113,7 +107,7 @@ enum LegalText {
     static let privacy = """
     **Alarm7 Privacy Policy**
 
-    Last updated: September 22, 2026
+    Last updated: September 24, 2026
 
     Alarm7 ("the app") is built by Sami ("we," "us"). This policy explains how the app handles your information.
 
@@ -135,7 +129,7 @@ enum LegalText {
 
     **Purchases**
 
-    Subscriptions are processed entirely by Apple. We never see or receive your payment details, name, or Apple ID. The app only checks with Apple whether you have an active subscription so it can unlock Pro features.
+    Alarm7 does not currently offer in-app purchases. If we add them in the future, they will be processed entirely by Apple. We would never see or receive your payment details, name, or Apple ID, and this policy will be updated before any such change.
 
     **Third Parties**
 
