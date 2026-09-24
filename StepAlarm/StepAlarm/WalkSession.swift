@@ -167,11 +167,19 @@ final class WalkSession {
             let a = motion.userAcceleration
             let g = motion.gravity
             let r = motion.rotationRate
+            // Turning around (e.g. at a wall) spins the phone about the
+            // vertical axis — that's walking, not shaking — so only rotation
+            // that tips or twists the phone away from vertical is measured.
+            let gSquared = max(g.x * g.x + g.y * g.y + g.z * g.z, 0.0001)
+            let spinAboutVertical = (r.x * g.x + r.y * g.y + r.z * g.z) / gSquared
+            let tx = r.x - spinAboutVertical * g.x
+            let ty = r.y - spinAboutVertical * g.y
+            let tz = r.z - spinAboutVertical * g.z
             let sample = StepDetector.Sample(
                 time: motion.timestamp,
                 // Gravity points down, so flip the sign to make "up" positive.
                 vertical: -(a.x * g.x + a.y * g.y + a.z * g.z),
-                rotation: (r.x * r.x + r.y * r.y + r.z * r.z).squareRoot()
+                rotation: (tx * tx + ty * ty + tz * tz).squareRoot()
             )
             MainActor.assumeIsolated { self?.handleMotion(sample) }
         }
@@ -220,6 +228,10 @@ final class WalkSession {
     /// from history when the app returns to the foreground: only steps inside
     /// time ranges iOS recorded as walking or running count.
     func refresh() {
+        if isActive && !isDemo && !isComplete {
+            // Coming to the front is the surest moment iOS allows the sound.
+            AlarmSound.shared.ensurePlaying()
+        }
         guard isActive, !isDemo, CMPedometer.isStepCountingAvailable() else { return }
         let sessionStart = startDate
         Task {

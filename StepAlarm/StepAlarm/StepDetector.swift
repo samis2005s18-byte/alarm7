@@ -16,7 +16,8 @@ struct StepDetector {
         var time: TimeInterval
         /// User acceleration along gravity, in g (up is positive).
         var vertical: Double
-        /// Rotation rate magnitude, in rad/s.
+        /// Rate the phone is being tipped or twisted, in rad/s — excluding
+        /// spinning about the vertical axis, which is just turning around.
         var rotation: Double
     }
 
@@ -35,6 +36,7 @@ struct StepDetector {
     static let maxPeakJump = 2.5          // a bump this many times harder than the walk's usual step isn't a step
     static let fastPeaksForShake = 2      // this many too-fast bumps within `fastPeakWindow` = shaking
     static let fastPeakWindow = 2.0       // s
+    static let resumeWindow = 4.0         // s — walking again within this after a pause keeps counting
 
     private(set) var rejectedShakes = 0
     /// Steps seen while the walking rhythm is still being checked. Shown right
@@ -56,6 +58,8 @@ struct StepDetector {
     private var averagePeak = 0.0
     private var rhythmPeaks: [Double] = []
     private var fastPeakTimes: [TimeInterval] = []
+    /// When a step was last counted in an established walk.
+    private var lastCountedTime: TimeInterval?
 
     /// Feeds one sample; returns how many steps became newly counted.
     mutating func add(_ sample: Sample) -> Int {
@@ -107,6 +111,14 @@ struct StepDetector {
             return 0
         }
         if interval > Self.maxInterval {
+            // A short pause (stopping to turn at a wall) doesn't restart the
+            // rhythm check: the walk just carries on counting.
+            if counting, let lastCounted = lastCountedTime, time - lastCounted <= Self.resumeWindow {
+                lastStepTime = time
+                lastCountedTime = time
+                offBeatSteps = 0
+                return 1
+            }
             startRhythm(at: time)
             return 0
         }
@@ -132,6 +144,7 @@ struct StepDetector {
                 averageInterval += 0.3 * (interval - averageInterval)
             }
             lastStepTime = time
+            lastCountedTime = time
             averagePeak += 0.2 * (amplitude - averagePeak)
             return 1
         }
@@ -147,6 +160,7 @@ struct StepDetector {
             averagePeak = rhythmPeaks.reduce(0, +) / Double(max(rhythmPeaks.count, 1))
             rhythmPeaks = []
             let credited = pending
+            lastCountedTime = time
             pending = 0
             intervals = []
             return credited
@@ -176,5 +190,6 @@ struct StepDetector {
         fastPeakTimes = []
         rhythmPeaks = []
         offBeatSteps = 0
+        lastCountedTime = nil
     }
 }

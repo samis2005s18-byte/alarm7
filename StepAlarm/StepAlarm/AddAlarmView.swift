@@ -141,25 +141,58 @@ struct AddAlarmView: View {
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.textPrimary)
 
-                Slider(value: $steps, in: 1...Double(Self.proStepLimit), step: 1)
-                    .tint(Theme.neutralActive)
-                    .onChange(of: steps) { _, newValue in
-                        Theme.tap()
-                        enforceStepLimit(newValue)
-                    }
+                // A big number with − / + is unambiguous, unlike a slider's
+                // thumb position; the chips jump straight to common goals.
+                HStack(spacing: Theme.Spacing.lg) {
+                    stepButton("minus", delta: -1)
+                    Text("\(Int(steps))")
+                        .font(.system(size: 44, weight: .semibold))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .foregroundStyle(Theme.textPrimary)
+                        .frame(minWidth: 80)
+                        .animation(.snappy(duration: 0.2), value: steps)
+                    stepButton("plus", delta: 1)
+                }
+                .frame(maxWidth: .infinity)
 
                 HStack(spacing: Theme.Spacing.sm) {
                     presetChip(10)
+                    presetChip(15)
                     presetChip(20)
                     presetChip(30)
                 }
 
-                Text("\(Int(steps)) steps ≈ \(Int(steps)) sec of walking")
+                Text("\(Int(steps)) \(Int(steps) == 1 ? "step" : "steps") ≈ \(Int(steps)) sec of walking")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
             }
             .padding(.vertical, Theme.Spacing.xs)
         }
+    }
+
+    private func stepButton(_ symbol: String, delta: Int) -> some View {
+        let target = Int(steps) + delta
+        let atLimit = target < 1 || target > Self.proStepLimit
+        return Button {
+            guard !atLimit else { return }
+            if !isPro && target > Self.freeStepLimit {
+                showPaywall = true
+                return
+            }
+            Theme.tap()
+            steps = Double(target)
+        } label: {
+            Image(systemName: symbol)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+                .frame(width: Theme.minTapTarget + 4, height: Theme.minTapTarget + 4)
+                .background(Theme.surface, in: Circle())
+                .opacity(atLimit ? 0.35 : 1)
+        }
+        .buttonStyle(.pressable)
+        .disabled(atLimit)
+        .accessibilityLabel(delta > 0 ? "More steps" : "Fewer steps")
     }
 
     private func presetChip(_ value: Int) -> some View {
@@ -183,12 +216,6 @@ struct AddAlarmView: View {
             .background(selected ? Theme.textPrimary : Theme.surface, in: Capsule())
         }
         .buttonStyle(.pressable)
-    }
-
-    private func enforceStepLimit(_ value: Double) {
-        guard !isPro, value > Double(Self.freeStepLimit) else { return }
-        steps = Double(Self.freeStepLimit)
-        showPaywall = true
     }
 
     // MARK: - Repeat

@@ -9,37 +9,68 @@ final class AlarmSound {
     static let shared = AlarmSound()
 
     private var player: AVAudioPlayer?
-    /// Vibrates alongside the sound, so turning the volume down doesn't make
-    /// the alarm go quiet.
-    private var vibrationTimer: Timer?
+    /// True from `start()` until `stop()`: the sound should be playing.
+    private var wantsSound = false
+    /// Vibrates alongside the sound (so turning the volume down doesn't make
+    /// the alarm go quiet) and re-checks that the sound is really playing.
+    private var heartbeat: Timer?
+    private var interruptionObserver: NSObjectProtocol?
 
     private init() {}
 
     func start() {
-        guard player == nil else { return }
+        wantsSound = true
+        ensurePlaying()
+        if heartbeat == nil {
+            heartbeat = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
+                MainActor.assumeIsolated {
+                    AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                    AlarmSound.shared.ensurePlaying()
+                }
+            }
+        }
+        if interruptionObserver == nil {
+            // A call, Siri or the system alarm can take the audio away; when
+            // it gives it back, pick the alarm sound up again.
+            interruptionObserver = NotificationCenter.default.addObserver(
+                forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
+            ) { _ in
+                MainActor.assumeIsolated { AlarmSound.shared.ensurePlaying() }
+            }
+        }
+    }
+
+    /// Starts (or restarts) the sound if it should be playing but isn't.
+    /// iOS can refuse to start audio while the app is still in the background
+    /// or while the system alarm is sounding, so this is retried by the
+    /// heartbeat and when the app comes to the front, instead of trying once.
+    func ensurePlaying() {
+        guard wantsSound else { return }
+        if let player, player.isPlaying { return }
         do {
             // .playback rings even with the Silent switch on, and keeps
             // playing with the screen locked (UIBackgroundModes: audio).
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default)
             try session.setActive(true)
-            let player = try AVAudioPlayer(data: Self.makeBeepWAV())
+            let player = try self.player ?? AVAudioPlayer(data: Self.makeBeepWAV())
             player.numberOfLoops = -1
             player.volume = 1
             player.play()
             self.player = player
         } catch {
-            player = nil
-        }
-        vibrationTimer?.invalidate()
-        vibrationTimer = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
-            AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+            // Not allowed yet — the next heartbeat or foregrounding retries.
         }
     }
 
     func stop() {
-        vibrationTimer?.invalidate()
-        vibrationTimer = nil
+        wantsSound = false
+        heartbeat?.invalidate()
+        heartbeat = nil
+        if let interruptionObserver {
+            NotificationCenter.default.removeObserver(interruptionObserver)
+            self.interruptionObserver = nil
+        }
         guard let player else { return }
         player.stop()
         self.player = nil
