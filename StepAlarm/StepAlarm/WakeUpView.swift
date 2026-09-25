@@ -19,6 +19,8 @@ struct WakeUpView: View {
     var diagnostics: String = ""
     /// Shown only for alarms with Emergency stop turned on.
     var onEmergencyStop: (() -> Void)? = nil
+    /// When "Lock apps after I wake up" has locked apps, until when.
+    var appsLockedUntil: Date? = nil
 
     struct RepeatOffer {
         var nextTime: Date
@@ -142,6 +144,13 @@ struct WakeUpView: View {
                 .font(.subheadline)
                 .foregroundStyle(Theme.textSecondary)
 
+            if let appsLockedUntil {
+                Label("Your apps are locked until \(appsLockedUntil.formatted(date: .omitted, time: .shortened))", systemImage: "lock.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.textPrimary)
+                    .padding(.top, Theme.Spacing.xs)
+            }
+
             if let offer = repeatOffer {
                 VStack(spacing: Theme.Spacing.sm) {
                     Text("Set again for tomorrow at \(offer.nextTime, format: .dateTime.hour().minute())?")
@@ -231,7 +240,8 @@ struct WakeUpScreen: View {
                 errorMessage: session.motionMessage,
                 repeatOffer: repeatOffer,
                 diagnostics: session.diagnostics,
-                onEmergencyStop: session.emergencyStopAllowed ? { session.emergencyStop() } : nil
+                onEmergencyStop: session.emergencyStopAllowed ? { session.emergencyStop() } : nil,
+                appsLockedUntil: AppLocker.shared.isLocked ? AppLocker.shared.lockedUntil : nil
             )
         }
         .sheet(isPresented: $showPaywall) {

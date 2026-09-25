@@ -8,7 +8,7 @@ options:
 settings:
   base:
     APP_BUNDLE_ID: ${BUNDLE_ID}
-    MARKETING_VERSION: "1.0"
+    MARKETING_VERSION: "1.1"
     CURRENT_PROJECT_VERSION: "1"
     VERSIONING_SYSTEM: apple-generic
     SWIFT_VERSION: "5.0"
@@ -25,16 +25,20 @@ targets:
           - WalkingIcon.png
           - StepAlarm.storekit
           - PrivacyInfo.xcprivacy
+          - StepAlarm.entitlements
       - path: StepAlarm/Shared
+      - path: StepAlarm/AppLockShared
       - path: StepAlarm/StepAlarm/StepAlarm.storekit
         buildPhase: none
       - path: StepAlarm/StepAlarm/PrivacyInfo.xcprivacy
         buildPhase: resources
     dependencies:
       - target: StepAlarmWidget
+      - target: AppLockMonitor
     settings:
       base:
         PRODUCT_NAME: StepAlarm
+        CODE_SIGN_ENTITLEMENTS: StepAlarm/StepAlarm/StepAlarm.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID)
         INFOPLIST_FILE: StepAlarm/StepAlarm/Info.plist
@@ -62,6 +66,25 @@ targets:
         INFOPLIST_FILE: StepAlarm/StepAlarmWidget/Info.plist
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Alarm7
+        SKIP_INSTALL: YES
+  AppLockMonitor:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: StepAlarm/AppLockMonitor
+        excludes:
+          - Info.plist
+          - AppLockMonitor.entitlements
+      - path: StepAlarm/AppLockShared
+    settings:
+      base:
+        PRODUCT_NAME: AppLockMonitor
+        TARGETED_DEVICE_FAMILY: "1"
+        PRODUCT_BUNDLE_IDENTIFIER: $(APP_BUNDLE_ID).AppLockMonitor
+        INFOPLIST_FILE: StepAlarm/AppLockMonitor/Info.plist
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Alarm7
+        CODE_SIGN_ENTITLEMENTS: StepAlarm/AppLockMonitor/AppLockMonitor.entitlements
         SKIP_INSTALL: YES
 schemes:
   StepAlarm:

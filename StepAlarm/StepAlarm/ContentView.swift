@@ -197,6 +197,7 @@ struct ContentView: View {
             // Picks up permissions changed in the Settings app.
             await scheduler.requestAuthorizationIfNeeded()
         }
+        AppLocker.shared.unlockIfExpired()
         await store.refreshFromSystem()
         await store.downgradeRepeatingAlarmsIfNeeded()
         session.resumeIfAlarmRinging()

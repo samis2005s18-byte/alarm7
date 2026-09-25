@@ -7,6 +7,9 @@ enum AppConfig {
     static let showDeveloperTools = false
     /// Gray line on the Wake Up screen comparing step counters.
     static let showStepDiagnostics = false
+    /// "Lock apps after I wake up" (Screen Time). Set to false to hide the
+    /// whole feature: its Settings section disappears and nothing is locked.
+    static let appLockEnabled = true
 }
 
 /// App-wide preferences: defaults used when creating a new alarm, plus

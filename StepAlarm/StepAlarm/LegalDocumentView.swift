@@ -119,6 +119,10 @@ enum LegalText {
 
     Alarm7 uses your device's motion sensor to count steps so it can turn off your alarm. This data is processed only on your device and is never sent to us or anyone else.
 
+    **App Locking (Screen Time)**
+
+    If you use "Lock apps after I wake up", Alarm7 uses Apple's Screen Time to lock the apps you choose. Apple never tells Alarm7 which apps you picked; the app only receives private codes it can use to show and lock them, and these stay on your device.
+
     **Alarms & Settings**
 
     Your alarms, step goals, and settings are stored only on your device. If you delete the app, this data is deleted too.

@@ -32,6 +32,7 @@ workflows:
           keychain initialize
           app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --strict-match-identifier --create
           app-store-connect fetch-signing-files "$BUNDLE_ID.StepAlarmWidget" --type IOS_APP_STORE --strict-match-identifier --create
+          app-store-connect fetch-signing-files "$BUNDLE_ID.AppLockMonitor" --type IOS_APP_STORE --strict-match-identifier --create
           keychain add-certificates
           xcode-project use-profiles
       - name: Set build number
