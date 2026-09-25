@@ -62,10 +62,6 @@ struct SettingsView: View {
                     Text("Both are required for alarms to ring reliably and count real steps.")
                 }
 
-                if AppConfig.appLockEnabled {
-                    AppLockSection()
-                }
-
                 if SubscriptionStore.proVisible {
                     Section("Subscription") {
                         if !SubscriptionStore.purchasesEnabled {

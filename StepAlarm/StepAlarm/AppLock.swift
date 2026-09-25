@@ -5,9 +5,10 @@ import ManagedSettings
 import Observation
 import SwiftUI
 
-/// "Lock apps after I wake up": once an alarm is walked off, the apps the
-/// user chose stay locked (Screen Time shield) for the chosen time, then
-/// unlock by themselves via the AppLockMonitor extension.
+/// "Lock apps after I wake up", set per alarm on the Add Alarm page: once
+/// that alarm is walked off, the apps chosen for it stay locked (Screen Time
+/// shield) for the chosen time, then unlock by themselves via the
+/// AppLockMonitor extension.
 ///
 /// Apple only lets the user pick apps in its own picker; the app gets
 /// private tokens (it never learns which apps they are) that it can show
@@ -18,51 +19,58 @@ final class AppLocker {
 
     /// Minutes the apps stay locked after waking.
     static let durations = [10, 15, 30, 60]
+    static let defaultMinutes = 15
+
+    /// One alarm's app lock: which apps, and for how long.
+    struct Plan: Codable, Equatable {
+        var selection: FamilyActivitySelection
+        var minutes: Int
+
+        var hasApps: Bool {
+            !selection.applicationTokens.isEmpty || !selection.categoryTokens.isEmpty
+                || !selection.webDomainTokens.isEmpty
+        }
+    }
 
     private let defaults = UserDefaults.standard
 
     private enum Keys {
-        static let enabled = "appLock.enabled"
-        static let selection = "appLock.selection"
-        static let minutes = "appLock.minutes"
+        static let plans = "appLock.plans"
         static let lockedUntil = "appLock.lockedUntil"
     }
 
-    var isEnabled: Bool {
-        didSet { defaults.set(isEnabled, forKey: Keys.enabled) }
-    }
-    var selection: FamilyActivitySelection {
+    /// Alarm ID -> its app lock.
+    private var plans: [String: Plan] {
         didSet {
-            if let data = try? JSONEncoder().encode(selection) {
-                defaults.set(data, forKey: Keys.selection)
+            if let data = try? JSONEncoder().encode(plans) {
+                defaults.set(data, forKey: Keys.plans)
             }
         }
-    }
-    var minutes: Int {
-        didSet { defaults.set(minutes, forKey: Keys.minutes) }
     }
     /// When the current lock ends, or nil if nothing is locked.
     private(set) var lockedUntil: Date?
 
     var isAuthorized: Bool { AuthorizationCenter.shared.authorizationStatus == .approved }
 
-    var hasApps: Bool {
-        !selection.applicationTokens.isEmpty || !selection.categoryTokens.isEmpty
-            || !selection.webDomainTokens.isEmpty
-    }
-
     var isLocked: Bool { lockedUntil.map { $0 > .now } ?? false }
 
     private init() {
-        isEnabled = defaults.bool(forKey: Keys.enabled)
-        minutes = defaults.object(forKey: Keys.minutes) as? Int ?? 15
-        if let data = defaults.data(forKey: Keys.selection),
-           let saved = try? JSONDecoder().decode(FamilyActivitySelection.self, from: data) {
-            selection = saved
+        if let data = defaults.data(forKey: Keys.plans),
+           let saved = try? JSONDecoder().decode([String: Plan].self, from: data) {
+            plans = saved
         } else {
-            selection = FamilyActivitySelection()
+            plans = [:]
         }
         lockedUntil = defaults.object(forKey: Keys.lockedUntil) as? Date
+    }
+
+    func plan(for alarmID: UUID) -> Plan? {
+        plans[alarmID.uuidString]
+    }
+
+    /// Saves (or with nil, removes) an alarm's app lock.
+    func setPlan(_ plan: Plan?, for alarmID: UUID) {
+        plans[alarmID.uuidString] = plan
     }
 
     /// Shows Apple's one-time Screen Time permission prompt (Face ID).
@@ -76,8 +84,9 @@ final class AppLocker {
     }
 
     /// Called right after an alarm is walked off (or emergency-stopped).
-    func lockAfterWaking() {
-        guard AppConfig.appLockEnabled, isEnabled, isAuthorized, hasApps else { return }
+    func lockAfterWaking(alarmID: UUID) {
+        guard AppConfig.appLockEnabled, isAuthorized, let plan = plan(for: alarmID), plan.hasApps else { return }
+        let selection = plan.selection
 
         let store = ManagedSettingsStore(named: .alarm7AppLock)
         store.shield.applications = selection.applicationTokens.isEmpty ? nil : selection.applicationTokens
@@ -86,7 +95,7 @@ final class AppLocker {
         store.shield.webDomains = selection.webDomainTokens.isEmpty ? nil : selection.webDomainTokens
 
         let now = Date()
-        let end = now.addingTimeInterval(Double(minutes * 60))
+        let end = now.addingTimeInterval(Double(plan.minutes * 60))
         lockedUntil = end
         defaults.set(end, forKey: Keys.lockedUntil)
 
@@ -116,70 +125,67 @@ final class AppLocker {
     }
 }
 
-/// The "Lock apps" section in Settings.
-struct AppLockSection: View {
-    private var locker = AppLocker.shared
+/// "Lock apps after I wake up" on the Add Alarm page: pick apps (shown with
+/// their real icons) and how long they stay locked after this alarm.
+struct AppLockAlarmSection: View {
+    @Binding var isOn: Bool
+    @Binding var selection: FamilyActivitySelection
+    @Binding var minutes: Int
     @State private var showPicker = false
     @State private var permissionDenied = false
 
+    private var hasApps: Bool {
+        !selection.applicationTokens.isEmpty || !selection.categoryTokens.isEmpty
+            || !selection.webDomainTokens.isEmpty
+    }
+
     var body: some View {
         Section {
-            Toggle(isOn: Binding(get: { locker.isEnabled }, set: { on in Task { await setEnabled(on) } })) {
+            Toggle(isOn: Binding(get: { isOn }, set: { on in Task { await setOn(on) } })) {
                 Label("Lock apps after I wake up", systemImage: "lock.fill")
             }
             .tint(Theme.neutralActive)
 
-            if locker.isEnabled {
-                ForEach(Array(locker.selection.applicationTokens), id: \.self) { token in
+            if isOn {
+                ForEach(Array(selection.applicationTokens), id: \.self) { token in
                     Label(token)
                 }
-                ForEach(Array(locker.selection.categoryTokens), id: \.self) { token in
+                ForEach(Array(selection.categoryTokens), id: \.self) { token in
                     Label(token)
                 }
                 Button { showPicker = true } label: {
-                    Label(locker.hasApps ? "Add or remove apps" : "Add apps", systemImage: "plus.circle.fill")
+                    Label(hasApps ? "Add or remove apps" : "Choose apps to lock", systemImage: "plus.circle.fill")
                 }
-
-                Picker(selection: Binding(get: { locker.minutes }, set: { locker.minutes = $0 })) {
+                Picker(selection: $minutes) {
                     ForEach(AppLocker.durations, id: \.self) { Text("\($0) min").tag($0) }
                 } label: {
-                    Label("Keep them locked for", systemImage: "hourglass")
-                }
-
-                if let until = locker.lockedUntil, locker.isLocked {
-                    Label("Locked until \(until.formatted(date: .omitted, time: .shortened))", systemImage: "lock.fill")
-                        .foregroundStyle(Theme.textSecondary)
+                    Label("Apps open again after", systemImage: "hourglass")
                 }
             }
-        } header: {
-            Text("Lock apps")
         } footer: {
             if permissionDenied {
                 Text("Alarm7 needs Screen Time access to lock apps. Turn it on in the Settings app under Screen Time.")
                     .foregroundStyle(Theme.accent)
-            } else {
-                Text("After you walk off your alarm, these apps stay locked for the time you choose, then unlock by themselves. Tip: tap Add apps and search for Instagram, Snapchat or TikTok.")
+            } else if isOn {
+                Text("After you walk off this alarm, these apps stay locked for the time you choose, then open again by themselves. Tip: search for Instagram, TikTok or Facebook, or open the Social group.")
             }
         }
-        .familyActivityPicker(
-            isPresented: $showPicker,
-            selection: Binding(get: { locker.selection }, set: { locker.selection = $0 })
-        )
+        .familyActivityPicker(isPresented: $showPicker, selection: $selection)
     }
 
-    private func setEnabled(_ on: Bool) async {
+    private func setOn(_ on: Bool) async {
         guard on else {
-            locker.isEnabled = false
+            isOn = false
             return
         }
-        if !locker.isAuthorized {
-            guard await locker.requestAuthorization() else {
+        if !AppLocker.shared.isAuthorized {
+            guard await AppLocker.shared.requestAuthorization() else {
                 permissionDenied = true
                 return
             }
         }
         permissionDenied = false
-        locker.isEnabled = true
-        if !locker.hasApps { showPicker = true }
+        isOn = true
+        if !hasApps { showPicker = true }
     }
 }

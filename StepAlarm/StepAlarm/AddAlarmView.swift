@@ -1,3 +1,4 @@
+import FamilyControls
 import SwiftUI
 
 /// "Add Alarm" / "Edit Alarm" sheet: time wheel, then every other setting
@@ -16,6 +17,9 @@ struct AddAlarmView: View {
     @State private var days: Set<Int>   // 0 = Sunday … 6 = Saturday
     @State private var vibrationEnabled: Bool
     @State private var emergencyStop: Bool
+    @State private var locksApps: Bool
+    @State private var lockSelection: FamilyActivitySelection
+    @State private var lockMinutes: Int
     @State private var showPaywall = false
 
     private var isPro: Bool { SubscriptionStore.shared.hasFullAccess }
@@ -36,6 +40,10 @@ struct AddAlarmView: View {
         _days = State(initialValue: alarm.days)
         _vibrationEnabled = State(initialValue: alarm.vibrationEnabled)
         _emergencyStop = State(initialValue: alarm.emergencyStop)
+        let lockPlan = AppLocker.shared.plan(for: alarm.id)
+        _locksApps = State(initialValue: lockPlan?.hasApps ?? false)
+        _lockSelection = State(initialValue: lockPlan?.selection ?? FamilyActivitySelection())
+        _lockMinutes = State(initialValue: lockPlan?.minutes ?? AppLocker.defaultMinutes)
     }
 
     var body: some View {
@@ -54,6 +62,9 @@ struct AddAlarmView: View {
             List {
                 stepsSection
                 repeatSection
+                if AppConfig.appLockEnabled {
+                    AppLockAlarmSection(isOn: $locksApps, selection: $lockSelection, minutes: $lockMinutes)
+                }
                 extrasSection
                 emergencySection
                 if let onDelete {
@@ -331,6 +342,10 @@ struct AddAlarmView: View {
         updated.steps = Int(steps)
         updated.days = isPro ? days : []
         updated.emergencyStop = emergencyStop
+        if AppConfig.appLockEnabled {
+            let plan = AppLocker.Plan(selection: lockSelection, minutes: lockMinutes)
+            AppLocker.shared.setPlan(locksApps && plan.hasApps ? plan : nil, for: alarm.id)
+        }
         updated.snoozeEnabled = true
         updated.vibrationEnabled = vibrationEnabled
         updated.isOn = true

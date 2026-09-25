@@ -180,6 +180,7 @@ final class AlarmStore {
     func delete(_ id: UUID) async {
         alarms.removeAll { $0.id == id }
         save()
+        AppLocker.shared.setPlan(nil, for: id)
         await AlarmScheduler.shared.cancel(id)
     }
 

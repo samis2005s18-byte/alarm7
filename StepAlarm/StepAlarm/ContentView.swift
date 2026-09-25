@@ -331,6 +331,10 @@ struct ContentView: View {
                                 .frame(width: 11, height: 15)
                         }
                         Label(alarm.repeatText, systemImage: "repeat")
+                        if AppConfig.appLockEnabled, AppLocker.shared.plan(for: alarm.id) != nil {
+                            Image(systemName: "lock.fill")
+                                .accessibilityLabel("Locks apps")
+                        }
                     }
                     .font(.subheadline)
                     .foregroundStyle(Theme.textSecondary)
