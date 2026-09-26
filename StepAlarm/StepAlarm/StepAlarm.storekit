@@ -112,7 +112,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "alarm7.pro.yearly",
+          "productID" : "alarm7.pro.annual",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Pro Yearly",
           "subscriptionGroupID" : "21400000",

@@ -8,6 +8,7 @@ workflows:
         - push
       branch_patterns:
         - pattern: main
+        - pattern: app-lock
     integrations:
       app_store_connect: StepAlarm key
     environment:

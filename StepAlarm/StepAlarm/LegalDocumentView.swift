@@ -35,7 +35,7 @@ enum LegalText {
     static let terms = """
     **Alarm7 Terms of Use**
 
-    Last updated: September 24, 2026
+    Last updated: September 26, 2026
 
     These Terms of Use ("Terms") are an agreement between you and Sami ("we," "us," "our"), the developer of Alarm7 ("the app"). By downloading or using the app, you agree to these Terms. If you don't agree, don't use the app.
 
@@ -53,7 +53,7 @@ enum LegalText {
 
     **4. Price**
 
-    Alarm7 is currently free, and there is nothing to buy in the app. If we add paid features in the future, we will update these Terms first, and anything you pay for will be processed by Apple and clearly shown in the app before you buy it.
+    Alarm7 is free to download. Some features need an optional Alarm7 Pro subscription, offered monthly or yearly at the prices shown in the app before you buy. Payment is charged to your Apple ID when you confirm the purchase. Your subscription renews automatically at the same price unless you cancel it at least 24 hours before the end of the current period. You can manage or cancel it at any time in Settings > Apple ID > Subscriptions. Refunds are handled by Apple under its own policies.
 
     **5. Alarm Reliability**
 
@@ -107,7 +107,7 @@ enum LegalText {
     static let privacy = """
     **Alarm7 Privacy Policy**
 
-    Last updated: September 24, 2026
+    Last updated: September 26, 2026
 
     Alarm7 ("the app") is built by Sami ("we," "us"). This policy explains how the app handles your information.
 
@@ -133,7 +133,7 @@ enum LegalText {
 
     **Purchases**
 
-    Alarm7 does not currently offer in-app purchases. If we add them in the future, they will be processed entirely by Apple. We would never see or receive your payment details, name, or Apple ID, and this policy will be updated before any such change.
+    Alarm7 Pro subscriptions are processed entirely by Apple. We never see or receive your payment details, name, or Apple ID. The app only receives a confirmation from Apple that your subscription is active, and this stays on your device.
 
     **Third Parties**
 

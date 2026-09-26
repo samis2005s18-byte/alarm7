@@ -8,13 +8,13 @@ final class SubscriptionStore {
     static let shared = SubscriptionStore()
 
     static let monthlyID = "alarm7.pro.monthly"
-    static let yearlyID = "alarm7.pro.yearly"   // must match the ID in App Store Connect
-    /// Pro isn't on sale yet: the paywall shows "Coming soon" and nothing can
-    /// be bought. Flip to true once the subscriptions exist in App Store Connect.
-    static let purchasesEnabled = false
-    /// Pro is hidden for now: no paywall, crown or subscription settings are
-    /// shown, and everyone gets every feature. Flip to true to bring Pro back.
-    static let proVisible = false
+    /// Both plans live in the "Alarm7 Pro" group in App Store Connect.
+    /// ("alarm7.pro.yearly" was made in a separate group by mistake — don't use it.)
+    static let yearlyID = "alarm7.pro.annual"   // must match the ID in App Store Connect
+    /// Set to false to show "Coming soon" on the paywall instead of selling.
+    static let purchasesEnabled = true
+    /// Set to false to hide Pro entirely and give everyone every feature.
+    static let proVisible = true
 
     private(set) var products: [Product] = []
     private(set) var isPro = false

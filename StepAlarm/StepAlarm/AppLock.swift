@@ -147,15 +147,14 @@ struct AppLockAlarmSection: View {
             .tint(Theme.neutralActive)
 
             if isOn {
-                ForEach(Array(selection.applicationTokens), id: \.self) { token in
-                    Label(token)
+                Button {
+                    Theme.tap()
+                    showPicker = true
+                } label: {
+                    chosenAppsRow
                 }
-                ForEach(Array(selection.categoryTokens), id: \.self) { token in
-                    Label(token)
-                }
-                Button { showPicker = true } label: {
-                    Label(hasApps ? "Add or remove apps" : "Choose apps to lock", systemImage: "plus.circle.fill")
-                }
+                .buttonStyle(.pressable)
+                .accessibilityLabel(hasApps ? "\(chosenCount) apps chosen. Add or remove apps" : "Choose apps to lock")
                 Picker(selection: $minutes) {
                     ForEach(AppLocker.durations, id: \.self) { Text("\($0) min").tag($0) }
                 } label: {
@@ -171,6 +170,81 @@ struct AppLockAlarmSection: View {
             }
         }
         .familyActivityPicker(isPresented: $showPicker, selection: $selection)
+    }
+
+    /// Apps first, then categories (e.g. "Social") — these are what the row's
+    /// icon stack draws from.
+    private enum Chosen: Hashable {
+        case app(ApplicationToken)
+        case category(ActivityCategoryToken)
+    }
+
+    private var chosen: [Chosen] {
+        selection.applicationTokens.map(Chosen.app) + selection.categoryTokens.map(Chosen.category)
+    }
+
+    private var chosenCount: Int { chosen.count + selection.webDomainTokens.count }
+
+    private static let visibleIcons = 3
+    private static let iconSize: CGFloat = 34
+
+    /// One tappable row: the first few chosen apps as overlapping real icons
+    /// (Instagram, TikTok, Snapchat…), "•••" when there are more, and a "+"
+    /// that says more can be added. Tapping anywhere opens Apple's picker.
+    private var chosenAppsRow: some View {
+        HStack(spacing: Theme.Spacing.md) {
+            HStack(spacing: -10) {
+                if hasApps {
+                    ForEach(chosen.prefix(Self.visibleIcons), id: \.self) { item in
+                        chosenIcon(item)
+                    }
+                    if chosenCount > Self.visibleIcons {
+                        iconBubble { Image(systemName: "ellipsis").font(.subheadline.weight(.bold)) }
+                    }
+                }
+                iconBubble { Image(systemName: "plus").font(.subheadline.weight(.bold)) }
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(hasApps ? "\(chosenCount) \(chosenCount == 1 ? "app" : "apps") to lock" : "Choose apps to lock")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(hasApps ? "Tap to add or remove" : "Instagram, TikTok, Snapchat…")
+                    .font(.footnote)
+                    .foregroundStyle(Theme.textSecondary)
+            }
+
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.right")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Theme.textDisabled)
+        }
+        .padding(.vertical, Theme.Spacing.xs)
+        .contentShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private func chosenIcon(_ item: Chosen) -> some View {
+        Group {
+            switch item {
+            case .app(let token): Label(token)
+            case .category(let token): Label(token)
+            }
+        }
+        .labelStyle(.iconOnly)
+        .font(.system(size: Self.iconSize * 0.8))
+        .frame(width: Self.iconSize, height: Self.iconSize)
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous)
+            .stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
+    }
+
+    private func iconBubble(@ViewBuilder _ content: () -> some View) -> some View {
+        content()
+            .foregroundStyle(Theme.textPrimary)
+            .frame(width: Self.iconSize, height: Self.iconSize)
+            .background(Color(.tertiarySystemFill), in: Circle())
+            .overlay(Circle().stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
     }
 
     private func setOn(_ on: Bool) async {
