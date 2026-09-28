@@ -48,7 +48,7 @@ struct PaywallView: View {
 
                     VStack(alignment: .leading, spacing: 14) {
                         feature("lock.fill", "Lock any apps you choose: TikTok, Instagram, Snapchat and more")
-                        feature("hourglass", "Keep them locked for 10 minutes to 2 hours after you wake up")
+                        feature("hourglass", "Keep them locked for 1 minute to 2 hours after you wake up")
                         feature("lock.open.fill", "They open again by themselves when the time is up")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)

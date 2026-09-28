@@ -19,7 +19,8 @@ final class AppLocker {
     static let shared = AppLocker()
 
     /// Minutes the apps stay locked after waking.
-    static let durations = [10, 15, 30, 60, 120]
+    /// The stops on the lock-time slider (1 minute to 2 hours).
+    static let durations = [1, 5, 10, 15, 20, 30, 45, 60, 90, 120]
     static let defaultMinutes = 15
 
     /// One alarm's app lock: which apps, and for how long.
@@ -149,10 +150,7 @@ struct AppLockAlarmSection: View {
     var body: some View {
         Section {
             Toggle(isOn: Binding(get: { isOn }, set: { on in Task { await setOn(on) } })) {
-                HStack(spacing: Theme.Spacing.sm) {
-                    Label("Lock apps after I wake up", systemImage: "lock.fill")
-                    if !hasPremium { PremiumBadge() }
-                }
+                Label("Lock apps after I wake up", systemImage: "lock.fill")
             }
             .tint(Theme.neutralActive)
 
@@ -166,12 +164,14 @@ struct AppLockAlarmSection: View {
             .accessibilityLabel(hasApps ? "\(chosenCount) apps chosen. Add or remove apps" : "Choose apps to lock")
 
             durationBar
+        } header: {
+            if !hasPremium { PremiumBadge() }
         } footer: {
             if permissionDenied {
                 Text("Alarm7 needs Screen Time access to lock apps. Turn it on in the Settings app under Screen Time.")
                     .foregroundStyle(Theme.accent)
             } else if !hasPremium {
-                Text("App Lock is Premium: lock any apps you choose for 10 minutes to 2 hours after you wake up. Everything else in Alarm7 is free.")
+                Text("App Lock is Premium: lock any apps you choose for 1 minute to 2 hours after you wake up. Everything else in Alarm7 is free.")
             } else if isOn {
                 Text("After you walk off this alarm, these apps stay locked for the time you choose, then open again by themselves. Tip: search for Instagram, TikTok or Snapchat, or open the Social group.")
             }
@@ -270,58 +270,72 @@ struct AppLockAlarmSection: View {
 
     // MARK: - How long
 
-    /// A row of big buttons (10 min … 2 hr), always shown so the lock time is
-    /// in plain sight, with a sentence saying exactly how long it will be.
+    /// A slider from 1 minute to 2 hours, always shown, with the chosen time
+    /// in big type above it and a sentence saying exactly how long it will be.
     private var durationBar: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Label("How long to lock", systemImage: "hourglass")
-                .font(.subheadline.weight(.medium))
-                .foregroundStyle(Theme.textPrimary)
-
-            HStack(spacing: Theme.Spacing.sm) {
-                ForEach(AppLocker.durations, id: \.self) { value in
-                    durationChip(value)
-                }
+            HStack(alignment: .firstTextBaseline) {
+                Label("How long to lock", systemImage: "hourglass")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(Theme.textPrimary)
+                Spacer()
+                Text(Self.shortText(minutes))
+                    .font(.title2.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Theme.textPrimary)
+                    .contentTransition(.numericText())
+                    .animation(.snappy(duration: 0.2), value: minutes)
             }
+
+            Slider(value: durationIndex, in: 0...Double(AppLocker.durations.count - 1), step: 1) {
+                Text("How long to lock")
+            } minimumValueLabel: {
+                Text("1 min").font(.caption2).foregroundStyle(Theme.textSecondary)
+            } maximumValueLabel: {
+                Text("2 hr").font(.caption2).foregroundStyle(Theme.textSecondary)
+            }
+            .tint(Theme.textPrimary)
+            .accessibilityValue(Self.durationText(minutes))
 
             Text("Apps stay locked for \(Self.durationText(minutes)) after you walk off this alarm.")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
-                .contentTransition(.numericText())
-                .animation(.snappy(duration: 0.2), value: minutes)
         }
         .padding(.vertical, Theme.Spacing.xs)
     }
 
-    static func durationText(_ minutes: Int) -> String {
-        switch minutes {
-        case ..<60: "\(minutes) minutes"
-        case 60: "1 hour"
-        default: "\(minutes / 60) hours"
-        }
+    /// The slider moves through `AppLocker.durations` one stop at a time.
+    private var durationIndex: Binding<Double> {
+        Binding(
+            get: {
+                let stops = AppLocker.durations
+                let nearest = stops.indices.min { abs(stops[$0] - minutes) < abs(stops[$1] - minutes) } ?? 0
+                return Double(nearest)
+            },
+            set: { index in
+                let value = AppLocker.durations[Int(index.rounded())]
+                if value != minutes {
+                    Theme.tap()
+                    minutes = value
+                }
+            }
+        )
     }
 
-    private func durationChip(_ value: Int) -> some View {
-        let selected = minutes == value
-        return Button {
-            Theme.tap()
-            minutes = value
-        } label: {
-            VStack(spacing: 0) {
-                Text(value < 60 ? "\(value)" : "\(value / 60)")
-                    .font(.headline)
-                    .monospacedDigit()
-                Text(value < 60 ? "min" : (value == 60 ? "hour" : "hours"))
-                    .font(.caption2)
-            }
-            .foregroundStyle(selected ? Theme.background : Theme.textPrimary)
-            .frame(maxWidth: .infinity, minHeight: Theme.minTapTarget + 8)
-            .background(selected ? Theme.textPrimary : Theme.surface,
-                        in: RoundedRectangle(cornerRadius: Theme.chipRadius, style: .continuous))
-        }
-        .buttonStyle(.pressable)
-        .accessibilityLabel(Self.durationText(value))
-        .accessibilityAddTraits(selected ? .isSelected : [])
+    /// "30 min", "1 hr", "1 hr 30 min" for the big number.
+    static func shortText(_ minutes: Int) -> String {
+        let hours = minutes / 60, rest = minutes % 60
+        if hours == 0 { return "\(minutes) min" }
+        return rest == 0 ? "\(hours) hr" : "\(hours) hr \(rest) min"
+    }
+
+    /// "1 minute", "30 minutes", "1 hour", "1 hour 30 minutes" for sentences.
+    static func durationText(_ minutes: Int) -> String {
+        let hours = minutes / 60, rest = minutes % 60
+        let minuteText = "\(rest) \(rest == 1 ? "minute" : "minutes")"
+        if hours == 0 { return minuteText }
+        let hourText = "\(hours) \(hours == 1 ? "hour" : "hours")"
+        return rest == 0 ? hourText : "\(hourText) \(minuteText)"
     }
 
     // MARK: - Turning on
@@ -348,10 +362,10 @@ struct AppLockAlarmSection: View {
     }
 }
 
-/// Small "PREMIUM" tag next to the one paid feature.
+/// "PREMIUM ONLY" tag at the top of the one paid feature.
 struct PremiumBadge: View {
     var body: some View {
-        Label("PREMIUM", systemImage: "crown.fill")
+        Label("PREMIUM ONLY", systemImage: "crown.fill")
             .labelStyle(.titleAndIcon)
             .font(.caption2.weight(.bold))
             .foregroundStyle(.black)
