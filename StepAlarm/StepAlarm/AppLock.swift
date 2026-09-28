@@ -4,6 +4,7 @@ import Foundation
 import ManagedSettings
 import Observation
 import SwiftUI
+import UIKit
 
 /// "Lock apps after I wake up", set per alarm on the Add Alarm page: once
 /// that alarm is walked off, the apps chosen for it stay locked (Screen Time
@@ -349,44 +350,57 @@ struct PremiumBadge: View {
     }
 }
 
-/// Three look-alike app tiles (Instagram, TikTok and Snapchat colors) that
-/// show what App Lock is for before any real apps are picked. They're drawn,
-/// not the real logos, which Apple doesn't allow other apps to use.
+/// Instagram, TikTok and Snapchat tiles that show what App Lock is for before
+/// any real apps are picked: the real logo pictures when
+/// `AppConfig.showRealAppLogos` is on and the picture is in Assets, otherwise
+/// drawn look-alikes in their colors.
 struct SampleAppIcons: View {
     var size: CGFloat
 
     private struct Sample: Identifiable {
         let id: String
+        let asset: String
         let colors: [Color]
         let symbol: String
         let symbolColor: Color
     }
 
     private static let samples = [
-        Sample(id: "Instagram",
+        Sample(id: "Instagram", asset: "LogoInstagram",
                colors: [Color(red: 0.51, green: 0.23, blue: 0.71), Color(red: 0.99, green: 0.11, blue: 0.11),
                         Color(red: 0.99, green: 0.69, blue: 0.27)],
                symbol: "camera", symbolColor: .white),
-        Sample(id: "TikTok", colors: [.black, Color(white: 0.12)], symbol: "music.note", symbolColor: .white),
-        Sample(id: "Snapchat", colors: [Color(red: 1, green: 0.99, blue: 0)], symbol: "bubble.left.fill",
+        Sample(id: "TikTok", asset: "LogoTikTok", colors: [.black, Color(white: 0.12)], symbol: "music.note", symbolColor: .white),
+        Sample(id: "Snapchat", asset: "LogoSnapchat", colors: [Color(red: 1, green: 0.99, blue: 0)], symbol: "bubble.left.fill",
                symbolColor: .black),
     ]
 
     var body: some View {
         HStack(spacing: -size * 0.28) {
             ForEach(Self.samples) { sample in
-                RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
-                    .fill(LinearGradient(colors: sample.colors, startPoint: .bottomLeading, endPoint: .topTrailing))
-                    .overlay(
-                        Image(systemName: sample.symbol)
-                            .font(.system(size: size * 0.45, weight: .bold))
-                            .foregroundStyle(sample.symbolColor)
-                    )
+                tile(sample)
+                    .frame(width: size, height: size)
+                    .clipShape(RoundedRectangle(cornerRadius: size * 0.26, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
                         .stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
-                    .frame(width: size, height: size)
             }
         }
         .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func tile(_ sample: Sample) -> some View {
+        if AppConfig.showRealAppLogos, let logo = UIImage(named: sample.asset) {
+            Image(uiImage: logo)
+                .resizable()
+                .scaledToFill()
+        } else {
+            LinearGradient(colors: sample.colors, startPoint: .bottomLeading, endPoint: .topTrailing)
+                .overlay(
+                    Image(systemName: sample.symbol)
+                        .font(.system(size: size * 0.45, weight: .bold))
+                        .foregroundStyle(sample.symbolColor)
+                )
+        }
     }
 }

@@ -10,6 +10,10 @@ enum AppConfig {
     /// "Lock apps after I wake up" (Screen Time). Set to false to hide the
     /// whole feature: its Settings section disappears and nothing is locked.
     static let appLockEnabled = true
+    /// Show the real Instagram, TikTok and Snapchat logo pictures (LogoInstagram,
+    /// LogoTikTok, LogoSnapchat in Assets) before any apps are picked. Set to
+    /// false if Apple objects — drawn look-alikes show instead.
+    static let showRealAppLogos = true
 }
 
 /// App-wide preferences: defaults used when creating a new alarm, plus
