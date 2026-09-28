@@ -20,7 +20,7 @@ Alarm7 is an iPhone alarm that only turns off after the user walks a set number 
 - `WalkSession.swift` — the walk: feeds StepDetector, finishes the alarm when the goal is reached, optional **Emergency stop** (per alarm, hold 10 s, red caution on Add Alarm page).
 - `AlarmSound.swift` — in-app beeping + vibration while walking; keeps retrying until iOS lets it play (fixed "no sound until app killed" bug). Uses the audio background mode.
 - `AddAlarmView.swift` — time wheel, big step number with −/+ and 10/15/20/30 chips, repeat days, vibration, Emergency stop. (Label field removed on purpose.)
-- Pro/subscriptions exist in code but are **hidden**: `SubscriptionStore.proVisible = false`, `purchasesEnabled = false`; everyone gets every feature free. Don't delete Pro code — Sami wants it back later.
+- Pro/subscriptions: on `main` (1.0) they are **hidden** (`proVisible = false`, `purchasesEnabled = false`). On `app-lock` (1.1, since Sep 26) Pro is **on**: monthly `alarm7.pro.monthly` $4.99, yearly `alarm7.pro.annual` $29.99, both in the "Alarm7 Pro" group (`alarm7.pro.yearly` was made in a separate group by mistake — don't use it). Terms/Privacy on 1.1 describe the subscription.
 - `AppConfig` (in `AppSettings.swift`): `showDeveloperTools` and `showStepDiagnostics` are off for store builds.
 - Always dark theme. Permissions required to add alarms: Alarms + Motion & Fitness.
 - `PrivacyInfo.xcprivacy` declares UserDefaults (CA92.1). Terms/Privacy text in `LegalDocumentView.swift` say the app is free with nothing to buy.
@@ -42,7 +42,7 @@ Alarm7 is an iPhone alarm that only turns off after the user walks a set number 
 ## How building works (no Xcode)
 - Code lives in this folder and on GitHub **private** repo `samis2005s18-byte/alarm7` (gh CLI is logged in on this Mac).
 - `project.yml` (XcodeGen) generates the Xcode project in the cloud; `codemagic.yaml` workflow "StepAlarm to TestFlight" signs, builds, uploads to TestFlight (`submit_to_testflight: false` — internal testers only).
-- Codemagic app: https://codemagic.io/app/6ab3458806173487f637a88b/settings → "Start new build" → choose branch (`main` or `app-lock`). Automatic builds on push are NOT active; start builds manually (only after Sami says yes).
+- Codemagic app: https://codemagic.io/app/6ab3458806173487f637a88b/settings → "Start new build" → choose branch (`main` or `app-lock`). Pushing to `main` or `app-lock` **starts a build automatically** (codemagic.yaml triggers), so only push after Sami says yes.
 - Signing: App Store Connect API key integration named "StepAlarm key"; env var `CERTIFICATE_PRIVATE_KEY` in group `signing` (the key file is `~/Documents/StepAlarm-signing/certificate_private_key.txt` — never paste it anywhere yourself).
 - Local check before building: `swiftc -parse` on changed files (the Mac's Swift is old, so `#Preview` errors are expected and fine). StepDetector can be tested locally with a small simulation (`swiftc main.swift StepDetector.swift`).
 - Build numbers come from Codemagic's `BUILD_NUMBER`.
