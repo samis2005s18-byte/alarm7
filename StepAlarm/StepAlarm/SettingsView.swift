@@ -21,7 +21,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Defaults") {
+                Section {
                     Stepper(
                         value: Binding(get: { settings.defaultSteps }, set: { settings.defaultSteps = $0 }),
                         in: 1...(subscriptions.hasFullAccess ? 30 : 15)
@@ -41,6 +41,10 @@ struct SettingsView: View {
                         Label("Vibration", systemImage: "iphone.radiowaves.left.and.right")
                     }
                     .tint(Theme.neutralActive)
+                } header: {
+                    Text("Defaults")
+                } footer: {
+                    Text("Vibration is on for every alarm. Turn it off here if you don't want it.")
                 }
 
                 Section {

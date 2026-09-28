@@ -15,7 +15,6 @@ struct AddAlarmView: View {
     @State private var time: Date
     @State private var steps: Double
     @State private var days: Set<Int>   // 0 = Sunday … 6 = Saturday
-    @State private var vibrationEnabled: Bool
     @State private var emergencyStop: Bool
     @State private var locksApps: Bool
     @State private var lockSelection: FamilyActivitySelection
@@ -38,7 +37,6 @@ struct AddAlarmView: View {
         _time = State(initialValue: alarm.date)
         _steps = State(initialValue: Double(alarm.steps))
         _days = State(initialValue: alarm.days)
-        _vibrationEnabled = State(initialValue: alarm.vibrationEnabled)
         _emergencyStop = State(initialValue: alarm.emergencyStop)
         let lockPlan = AppLocker.shared.plan(for: alarm.id)
         _locksApps = State(initialValue: lockPlan?.hasApps ?? false)
@@ -65,7 +63,6 @@ struct AddAlarmView: View {
                 if AppConfig.appLockEnabled {
                     AppLockAlarmSection(isOn: $locksApps, selection: $lockSelection, minutes: $lockMinutes)
                 }
-                extrasSection
                 emergencySection
                 if let onDelete {
                     Section {
@@ -179,6 +176,8 @@ struct AddAlarmView: View {
                     .foregroundStyle(Theme.textSecondary)
             }
             .padding(.vertical, Theme.Spacing.xs)
+        } footer: {
+            Text("No snooze: tapping Stop rings the alarm again until you walk.")
         }
     }
 
@@ -304,20 +303,6 @@ struct AddAlarmView: View {
         .buttonStyle(.pressable)
     }
 
-    // MARK: - Vibration
-
-    private var extrasSection: some View {
-        Section {
-            Toggle(isOn: $vibrationEnabled) {
-                Label("Vibration", systemImage: "iphone.radiowaves.left.and.right")
-            }
-            .tint(Theme.neutralActive)
-            .onChange(of: vibrationEnabled) { _, _ in Theme.tap() }
-        } footer: {
-            Text("No snooze: tapping Stop rings the alarm again until you walk.")
-        }
-    }
-
     // MARK: - Emergency stop
 
     private var emergencySection: some View {
@@ -347,7 +332,8 @@ struct AddAlarmView: View {
             AppLocker.shared.setPlan(locksApps && plan.hasApps ? plan : nil, for: alarm.id)
         }
         updated.snoozeEnabled = true
-        updated.vibrationEnabled = vibrationEnabled
+        // Vibration is set once for all alarms in Settings.
+        updated.vibrationEnabled = AppSettings.shared.vibrationEnabled
         updated.isOn = true
         Theme.success()
         onSave(updated)

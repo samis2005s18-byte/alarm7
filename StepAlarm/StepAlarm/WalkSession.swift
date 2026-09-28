@@ -65,7 +65,8 @@ final class WalkSession {
         emergencyStopAllowed = settings?.emergencyStop ?? false
         start(
             alarmID: alarmID, goal: settings?.stepGoal ?? 15, label: settings?.label ?? "",
-            vibrationEnabled: settings?.vibrationEnabled ?? true,
+            // Follows the Vibration switch in Settings, even for alarms saved earlier.
+            vibrationEnabled: AppSettings.shared.vibrationEnabled,
             hour: settings?.hour ?? 7, minute: settings?.minute ?? 0, demo: false
         )
     }
