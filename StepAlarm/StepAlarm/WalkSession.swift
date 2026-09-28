@@ -46,6 +46,8 @@ final class WalkSession {
     /// shown for comparison and used if the motion sensors aren't available.
     private(set) var rawSteps = 0
     private var shakesBlocked = 0
+    /// When shaking was last caught, so the screen can say it doesn't count.
+    private(set) var lastShakeDate: Date?
     /// Steps the detector has confirmed as walking (what the goal counts).
     @ObservationIgnored private var confirmedSteps = 0
 
@@ -147,6 +149,7 @@ final class WalkSession {
     private func startPedometer() {
         rawSteps = 0
         shakesBlocked = 0
+        lastShakeDate = nil
         confirmedSteps = 0
         detector = StepDetector()
         if CMPedometer.isStepCountingAvailable() {
@@ -188,7 +191,10 @@ final class WalkSession {
 
     private func handleMotion(_ sample: StepDetector.Sample) {
         confirmedSteps += detector.add(sample)
-        if detector.rejectedShakes != shakesBlocked { shakesBlocked = detector.rejectedShakes }
+        if detector.rejectedShakes != shakesBlocked {
+            shakesBlocked = detector.rejectedShakes
+            lastShakeDate = .now
+        }
         if confirmedSteps >= goal {
             apply(count: confirmedSteps, error: nil)
         } else {
