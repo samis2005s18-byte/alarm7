@@ -41,7 +41,7 @@ enum LegalText {
 
     **1. The App**
 
-    Alarm7 is an alarm clock app that turns off only after you walk a set number of steps, counted using your device's motion sensor.
+    Alarm7 is an alarm clock app that turns off only after you walk a set number of steps, counted using your device's motion sensor. With an Alarm7 Premium subscription, it can also lock apps you choose for a while after you wake up ("App Lock").
 
     **2. Eligibility**
 
@@ -49,57 +49,77 @@ enum LegalText {
 
     **3. License**
 
-    We give you a personal, non-transferable, non-exclusive license to use the app on Apple devices you own or control, as allowed by Apple's App Store Terms. You may not copy, modify, reverse engineer, resell, or distribute the app.
+    We give you a personal, non-transferable, non-exclusive license to use the app on Apple devices you own or control, as allowed by Apple's App Store Terms and Apple's Licensed Application End User License Agreement (apple.com/legal/internet-services/itunes/dev/stdeula). You may not copy, modify, reverse engineer, resell, or distribute the app.
 
-    **4. Price**
+    **4. Free Features and Alarm7 Premium**
 
-    Alarm7 is free to download. Every alarm feature is free. The App Lock feature needs an optional Alarm7 Premium subscription, offered monthly or yearly at the prices shown in the app before you buy. Payment is charged to your Apple ID when you confirm the purchase. Your subscription renews automatically at the same price unless you cancel it at least 24 hours before the end of the current period. You can manage or cancel it at any time in Settings > Apple ID > Subscriptions. Refunds are handled by Apple under its own policies.
+    Alarm7 is free to download, and every alarm feature is free, including unlimited alarms, step goals, repeat days, and Emergency stop.
 
-    **5. Alarm Reliability**
+    App Lock is the only paid feature. It needs an Alarm7 Premium subscription:
+
+    • Plans: Monthly or Yearly. The price for your country is shown in the app before you buy.
+    • Payment: charged to your Apple ID when you confirm the purchase.
+    • Auto-renewal: your subscription renews automatically for the same length and price unless you turn off auto-renew at least 24 hours before the end of the current period. Your Apple ID is charged within 24 hours before each renewal.
+    • Cancelling: manage or cancel anytime in Settings > [your name] > Subscriptions. Cancelling stops future renewals; you keep Premium until the end of the period you already paid for.
+    • Price changes: if the price changes, Apple will tell you first and, where required, ask you to agree before you are charged the new price.
+    • Refunds: all payments are handled by Apple, and refunds are decided by Apple under its policies. You can request one at reportaproblem.apple.com.
+    • Restoring: use "Restore Purchases" in the app to get Premium back on a new or reset device signed in with the same Apple ID.
+    • When Premium ends: App Lock stops locking apps. Your alarms and every free feature keep working.
+
+    **5. App Lock**
+
+    App Lock uses Apple's Screen Time and needs your permission to work. After you walk off an alarm that has App Lock turned on, the apps you chose stay locked for the time you picked (1 minute to 1 hour), then open again by themselves.
+
+    • Locking and unlocking are done by iOS. Because of iOS, battery, or device settings, apps may sometimes unlock a little early or late, or not lock at all.
+    • Don't lock apps you may need in an emergency. Alarm7 never blocks emergency calls.
+    • You can always remove App Lock by turning off Screen Time access for Alarm7 in the Settings app, or by deleting Alarm7.
+    • App Lock is a self-control tool, not a parental control, and isn't meant to manage someone else's device.
+
+    **6. Alarm Reliability**
 
     We work hard to make Alarm7 reliable, but no alarm app can be guaranteed to work every time. Alarms may fail or be delayed because of device settings, low battery, a powered-off device, software updates, silent mode, Focus modes, permissions being turned off, or other things outside our control. Do not rely on Alarm7 as your only alarm for anything important, such as work, travel, exams, medical needs, or taking medication. We are not responsible for any loss caused by an alarm not ringing, ringing late, or not turning off.
 
-    **6. Safety**
+    **7. Safety**
 
     Alarm7 requires you to get up and walk. You are responsible for walking safely. Turn on a light, watch for stairs and obstacles, and don't walk if you feel dizzy, unwell, or unsteady. Don't use Alarm7 if walking right after waking up is unsafe for you because of a health condition, disability, or injury. Alarm7 is not a medical or fitness device and does not give medical advice. Step counts may not be exact.
 
-    **7. Acceptable Use**
+    **8. Acceptable Use**
 
     You agree not to misuse the app, interfere with how it works, or use it for anything illegal.
 
-    **8. Ownership**
+    **9. Ownership**
 
     The app, its name, design, code, and content belong to us. These Terms don't give you any ownership rights.
 
-    **9. Disclaimer of Warranties**
+    **10. Disclaimer of Warranties**
 
     The app is provided "as is" and "as available," without warranties of any kind, to the fullest extent allowed by law. We don't promise the app will be error-free, uninterrupted, or meet every need.
 
-    **10. Limitation of Liability**
+    **11. Limitation of Liability**
 
-    To the fullest extent allowed by law, we are not liable for any indirect, incidental, special, or consequential damages, including missed appointments, lost income, or injury from walking, arising from your use of the app. Our total liability to you for any claim will not be more than the amount, if any, you paid for the app in the 12 months before the claim. Some places don't allow these limits, so they may not fully apply to you.
+    To the fullest extent allowed by law, we are not liable for any indirect, incidental, special, or consequential damages, including missed appointments, lost income, or injury from walking, arising from your use of the app. Our total liability to you for any claim will not be more than the amount, if any, you paid for Alarm7 Premium in the 12 months before the claim. Some places don't allow these limits, so they may not fully apply to you.
 
-    **11. Apple**
+    **12. Apple**
 
-    These Terms are between you and us, not Apple. Apple is not responsible for the app or its content, and has no obligation to provide support or maintenance for it. If the app fails to meet any warranty, you may notify Apple for a refund of the purchase price, and Apple has no other warranty obligation. Apple is not responsible for any claims relating to the app, including product liability, legal compliance, or intellectual property claims. Apple and its subsidiaries are third-party beneficiaries of these Terms and may enforce them against you. You confirm you are not in a country under a U.S. government embargo and are not on any U.S. government list of prohibited or restricted parties.
+    These Terms are between you and us, not Apple. Apple is not responsible for the app or its content, and has no obligation to provide support or maintenance for it. If the app fails to meet any warranty, you may notify Apple for a refund of the purchase price, if any, and Apple has no other warranty obligation. Apple is not responsible for any claims relating to the app, including product liability, legal compliance, or intellectual property claims. Apple and its subsidiaries are third-party beneficiaries of these Terms and may enforce them against you. You confirm you are not in a country under a U.S. government embargo and are not on any U.S. government list of prohibited or restricted parties.
 
-    **12. Ending Use**
+    **13. Ending Use**
 
-    You can stop using the app anytime by deleting it. We may stop offering or updating the app at any time.
+    You can stop using the app anytime by deleting it. Deleting the app does not cancel a subscription; cancel it in Settings > [your name] > Subscriptions. We may stop offering or updating the app at any time.
 
-    **13. Changes to These Terms**
+    **14. Changes to These Terms**
 
     We may update these Terms. The latest version will always be on this page with a new "Last updated" date. Continuing to use the app means you accept the updated Terms.
 
-    **14. Governing Law**
+    **15. Governing Law**
 
     These Terms are governed by the laws of the Province of Ontario and the federal laws of Canada that apply there. Nothing in these Terms takes away any consumer protection rights you have under the laws of where you live.
 
-    **15. General**
+    **16. General**
 
     If any part of these Terms is found unenforceable, the rest stays in effect. These Terms, together with our Privacy Policy, are the entire agreement between you and us about the app.
 
-    **16. Contact**
+    **17. Contact**
 
     Questions? Email sami@veehealth.ca
     """
@@ -113,15 +133,15 @@ enum LegalText {
 
     **Information We Collect**
 
-    We do not collect, store, or share any personal information. Alarm7 has no accounts, no ads, no analytics, and no tracking.
+    We do not collect, store, or share any personal information. Alarm7 has no accounts, no ads, no analytics, and no tracking. Nothing you do in the app is sent to us.
 
     **Motion & Step Data**
 
     Alarm7 uses your device's motion sensor to count steps so it can turn off your alarm. This data is processed only on your device and is never sent to us or anyone else.
 
-    **App Locking (Screen Time)**
+    **App Lock (Screen Time)**
 
-    If you use "Lock apps after you wake up", Alarm7 uses Apple's Screen Time to lock the apps you choose. Apple never tells Alarm7 which apps you picked; the app only receives private codes it can use to show and lock them, and these stay on your device.
+    If you use App Lock ("Lock apps after you wake up"), Alarm7 asks for Apple's Screen Time permission and uses it to lock the apps you choose. Apple never tells Alarm7 which apps you picked or how you use them. The app only receives private codes from Apple that it can use to show and lock those apps, and these codes stay on your device. Alarm7 does not see your Screen Time reports, browsing, or app usage. You can turn off Screen Time access for Alarm7 anytime in the Settings app.
 
     **Alarms & Settings**
 
@@ -133,7 +153,7 @@ enum LegalText {
 
     **Purchases**
 
-    Alarm7 Premium subscriptions are processed entirely by Apple. We never see or receive your payment details, name, or Apple ID. The app only receives a confirmation from Apple that your subscription is active, and this stays on your device.
+    Alarm7 Premium subscriptions are processed entirely by Apple. We never see or receive your payment details, name, email, or Apple ID. The app only asks Apple whether your subscription is active, and that answer stays on your device. Apple handles your purchase under Apple's own Privacy Policy (apple.com/privacy).
 
     **Third Parties**
 
@@ -145,7 +165,7 @@ enum LegalText {
 
     **Your Choices**
 
-    You can turn off Motion & Fitness access, alarm permissions, or notifications anytime in your iPhone Settings. Some features, like step-based alarm dismissal, won't work without them.
+    You can turn off Motion & Fitness, Alarms, Screen Time, or notification access anytime in your iPhone Settings. Some features won't work without them: step-based alarm dismissal needs Motion & Fitness, and App Lock needs Screen Time.
 
     **Your Rights**
 
