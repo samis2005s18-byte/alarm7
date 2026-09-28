@@ -44,7 +44,9 @@ struct SettingsView: View {
                 } header: {
                     Text("Defaults")
                 } footer: {
-                    Text("Vibration is on for every alarm. Turn it off here if you don't want it.")
+                    Text(settings.vibrationEnabled
+                         ? "Vibration is on for every alarm. Turn it off here if you don't want it."
+                         : "Vibration is off for every alarm. Turn it on here any time.")
                 }
 
                 Section {
