@@ -1,4 +1,5 @@
 import CoreMotion
+import StoreKit
 import SwiftUI
 import UIKit
 
@@ -12,6 +13,7 @@ struct SettingsView: View {
     private var subscriptions = SubscriptionStore.shared
     @State private var showTerms = false
     @State private var showPrivacy = false
+    @State private var showManageSubscription = false
 
     init(onClose: @escaping () -> Void, onShowPaywall: @escaping () -> Void) {
         self.onClose = onClose
@@ -81,6 +83,9 @@ struct SettingsView: View {
                         } else if subscriptions.isPro {
                             Label("Alarm7 Premium is active", systemImage: "checkmark.seal.fill")
                                 .foregroundStyle(Theme.textPrimary)
+                            Button { showManageSubscription = true } label: {
+                                Label("Manage or Cancel Subscription", systemImage: "creditcard")
+                            }
                         } else {
                             Button { onShowPaywall() } label: {
                                 Label("Get Premium: Lock apps", systemImage: "crown.fill")
@@ -118,6 +123,7 @@ struct SettingsView: View {
                         .fontWeight(.semibold)
                 }
             }
+            .manageSubscriptionsSheet(isPresented: $showManageSubscription)
             .sheet(isPresented: $showTerms) {
                 LegalDocumentView(title: "Terms of Use", content: LegalText.terms) { showTerms = false }
             }

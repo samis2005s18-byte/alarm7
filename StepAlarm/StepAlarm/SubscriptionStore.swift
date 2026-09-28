@@ -98,7 +98,10 @@ final class SubscriptionStore {
         await refreshEntitlements()
     }
 
-    private func refreshEntitlements() async {
+    /// Asks Apple (from its on-device cache, so it works offline) whether a
+    /// plan is active right now. Called at launch, whenever the app comes to
+    /// the front, and just before App Lock locks apps.
+    func refreshEntitlements() async {
         var active = false
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,

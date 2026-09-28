@@ -345,6 +345,8 @@ final class WalkSession {
             if !demo, let id {
                 let parent = AlarmGoals.parent(of: id) ?? id
                 await AlarmScheduler.shared.finishRinging(alarmID: id)
+                // Make sure a paid (or just-expired) Premium is known before locking.
+                await SubscriptionStore.shared.refreshEntitlements()
                 AppLocker.shared.lockAfterWaking(alarmID: parent)
                 // A repeating alarm needs its backup rings queued again for next time.
                 if let item = AlarmStore.shared.alarms.first(where: { $0.id == parent }), item.isOn, !item.days.isEmpty {

@@ -198,6 +198,8 @@ struct ContentView: View {
             await scheduler.requestAuthorizationIfNeeded()
         }
         AppLocker.shared.unlockIfExpired()
+        // Picks up a subscription that renewed, expired, or was refunded.
+        await SubscriptionStore.shared.refreshEntitlements()
         await store.refreshFromSystem()
         await store.downgradeRepeatingAlarmsIfNeeded()
         session.resumeIfAlarmRinging()
