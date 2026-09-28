@@ -13,8 +13,6 @@ struct WakeUpView: View {
     var statusText: String = "Start walking…"
     var statusIcon: String? = nil
     var errorMessage: String? = nil
-    /// Shaking was just caught: say it doesn't count.
-    var isShaking: Bool = false
     /// Free tier only — offered once, right after a one-time alarm rings.
     var repeatOffer: RepeatOffer? = nil
     /// Small gray line showing what the phone detects (temporary, for tuning).
@@ -103,14 +101,12 @@ struct WakeUpView: View {
             .frame(width: 260, height: 260)
             .padding(.horizontal, Theme.Spacing.lg)
 
-            if stepCount > 0 {
-                Image("WalkingIcon")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 40, height: 54)
-                    .foregroundStyle(.white)
-            }
+            Image("WalkingIcon")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 40, height: 54)
+                .foregroundStyle(.white)
 
             VStack(spacing: Theme.Spacing.sm) {
                 Text("Get up and walk to turn off the alarm")
@@ -119,9 +115,7 @@ struct WakeUpView: View {
                     .foregroundStyle(.white)
 
                 Group {
-                    if errorMessage == nil, isShaking {
-                        Label("Shaking doesn't count. Walk instead.", systemImage: "hand.raised.fill")
-                    } else if errorMessage == nil, let statusIcon {
+                    if errorMessage == nil, let statusIcon {
                         Label(statusText, systemImage: statusIcon)
                     } else {
                         Text(errorMessage ?? statusText)
@@ -129,41 +123,11 @@ struct WakeUpView: View {
                 }
                     .font(.subheadline)
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(errorMessage != nil || isShaking ? Theme.accent : .white.opacity(0.7))
+                    .foregroundStyle(errorMessage != nil ? Theme.accent : .white.opacity(0.7))
                     .animation(.easeOut(duration: 0.2), value: statusText)
-                    .animation(.easeOut(duration: 0.2), value: isShaking)
-
-                // How to walk so every step counts, until the first step does.
-                if stepCount == 0 && errorMessage == nil {
-                    walkingTips
-                        .padding(.top, Theme.Spacing.sm)
-                        .transition(.opacity)
-                }
             }
             .padding(.horizontal, Theme.Spacing.xl)
-            .animation(.easeOut(duration: 0.3), value: stepCount == 0)
         }
-    }
-
-    private var walkingTips: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            walkingTip("iphone", "Hold your phone or put it in your pocket")
-            walkingTip("figure.walk", "Walk at a normal pace, around the room is fine")
-            walkingTip("hand.raised.slash", "Shaking the phone doesn't count")
-        }
-        .padding(Theme.Spacing.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: Theme.chipRadius, style: .continuous))
-    }
-
-    private func walkingTip(_ symbol: String, _ text: String) -> some View {
-        Label {
-            Text(text)
-        } icon: {
-            Image(systemName: symbol).frame(width: 22)
-        }
-        .font(.footnote)
-        .foregroundStyle(.white.opacity(0.85))
     }
 
     // MARK: - Completed state
@@ -269,7 +233,6 @@ struct WakeUpScreen: View {
                 stepCount: session.steps,
                 stepGoal: session.goal,
                 isMoving: session.lastStepDate.map { context.date.timeIntervalSince($0) < 3 } ?? false,
-                isShaking: session.lastShakeDate.map { context.date.timeIntervalSince($0) < 3 } ?? false,
                 isComplete: session.isComplete,
                 label: session.label,
                 statusText: session.progressStatus,
