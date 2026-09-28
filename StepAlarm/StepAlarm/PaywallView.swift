@@ -33,29 +33,27 @@ struct PaywallView: View {
 
             ScrollView {
                 VStack(spacing: 24) {
-                    Image(systemName: "lock.circle.fill")
-                        .font(.system(size: 72))
-                        .foregroundStyle(Theme.textPrimary)
+                    SampleAppIcons(size: 60)
                         .padding(.top, 8)
 
                     VStack(spacing: Theme.Spacing.sm) {
                         Text(store.isPro ? "You're Premium" : "Alarm7 Premium")
                             .font(.system(size: 34, weight: .semibold))
                             .foregroundStyle(Theme.textPrimary)
-                        Text("Every alarm feature is free. Premium adds App Lock.")
+                        Text("Wake up, then stay off your phone.")
                             .font(.callout)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(Theme.textSecondary)
                     }
 
-                    SampleAppIcons(size: 52)
-
                     VStack(alignment: .leading, spacing: 14) {
-                        feature("Lock Instagram, TikTok, Snapchat and more after you wake up")
-                        feature("You choose how long they stay locked")
-                        feature("They open again by themselves")
+                        feature("lock.fill", "Lock any apps you choose: TikTok, Instagram, Snapchat and more")
+                        feature("hourglass", "Keep them locked for 10 minutes to 2 hours after you wake up")
+                        feature("lock.open.fill", "They open again by themselves when the time is up")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
+
+                    freeForEveryone
 
                     if store.isPro {
                         Text("Thanks for subscribing. Manage your plan in Settings > Apple ID > Subscriptions.")
@@ -182,13 +180,28 @@ struct PaywallView: View {
         return "SAVE \(Int(((1 - paid / full) * 100).rounded()))%"
     }
 
-    private func feature(_ text: String) -> some View {
+    private func feature(_ symbol: String, _ text: String) -> some View {
         Label {
             Text(text).foregroundStyle(Theme.textPrimary)
         } icon: {
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.textPrimary)
+            Image(systemName: symbol).foregroundStyle(Theme.textPrimary)
         }
         .font(.body)
+    }
+
+    /// Makes it plain that Premium is only App Lock: the alarm itself costs nothing.
+    private var freeForEveryone: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            Label("Free for everyone", systemImage: "checkmark.seal.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Theme.textPrimary)
+            Text("Unlimited alarms, up to 30 steps, repeat days and every other alarm feature. You only pay if you want App Lock.")
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.md)
+        .background(Theme.surface, in: RoundedRectangle(cornerRadius: Theme.cardRadius))
     }
 
     private func planCard(id: String, title: String, price: String, period: String, badge: String?) -> some View {

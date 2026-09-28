@@ -165,15 +165,13 @@ struct AppLockAlarmSection: View {
             .buttonStyle(.pressable)
             .accessibilityLabel(hasApps ? "\(chosenCount) apps chosen. Add or remove apps" : "Choose apps to lock")
 
-            if isOn {
-                durationBar
-            }
+            durationBar
         } footer: {
             if permissionDenied {
                 Text("Alarm7 needs Screen Time access to lock apps. Turn it on in the Settings app under Screen Time.")
                     .foregroundStyle(Theme.accent)
             } else if !hasPremium {
-                Text("App Lock is a Premium feature. Everything else in Alarm7 is free.")
+                Text("App Lock is Premium: lock any apps you choose for 10 minutes to 2 hours after you wake up. Everything else in Alarm7 is free.")
             } else if isOn {
                 Text("After you walk off this alarm, these apps stay locked for the time you choose, then open again by themselves. Tip: search for Instagram, TikTok or Snapchat, or open the Social group.")
             }
@@ -232,7 +230,7 @@ struct AppLockAlarmSection: View {
                      : "Choose apps to lock")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.textPrimary)
-                Text(isOn && hasApps ? "Tap to add or remove" : "Instagram, TikTok, Snapchat…")
+                Text(isOn && hasApps ? "Tap to add or remove" : "TikTok, Instagram or any app you choose")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
             }
@@ -272,11 +270,11 @@ struct AppLockAlarmSection: View {
 
     // MARK: - How long
 
-    /// A row of big buttons (10 min … 2 hr) so the lock time is always in
-    /// plain sight and one tap to change.
+    /// A row of big buttons (10 min … 2 hr), always shown so the lock time is
+    /// in plain sight, with a sentence saying exactly how long it will be.
     private var durationBar: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
-            Label("Apps open again after", systemImage: "hourglass")
+            Label("How long to lock", systemImage: "hourglass")
                 .font(.subheadline.weight(.medium))
                 .foregroundStyle(Theme.textPrimary)
 
@@ -285,8 +283,22 @@ struct AppLockAlarmSection: View {
                     durationChip(value)
                 }
             }
+
+            Text("Apps stay locked for \(Self.durationText(minutes)) after you walk off this alarm.")
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .contentTransition(.numericText())
+                .animation(.snappy(duration: 0.2), value: minutes)
         }
         .padding(.vertical, Theme.Spacing.xs)
+    }
+
+    static func durationText(_ minutes: Int) -> String {
+        switch minutes {
+        case ..<60: "\(minutes) minutes"
+        case 60: "1 hour"
+        default: "\(minutes / 60) hours"
+        }
     }
 
     private func durationChip(_ value: Int) -> some View {
@@ -308,7 +320,7 @@ struct AppLockAlarmSection: View {
                         in: RoundedRectangle(cornerRadius: Theme.chipRadius, style: .continuous))
         }
         .buttonStyle(.pressable)
-        .accessibilityLabel(value < 60 ? "\(value) minutes" : "\(value / 60) \(value == 60 ? "hour" : "hours")")
+        .accessibilityLabel(Self.durationText(value))
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
