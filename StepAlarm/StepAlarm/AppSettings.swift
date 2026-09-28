@@ -7,7 +7,7 @@ enum AppConfig {
     static let showDeveloperTools = false
     /// Gray line on the Wake Up screen comparing step counters.
     static let showStepDiagnostics = false
-    /// "Lock apps after I wake up" (Screen Time). Set to false to hide the
+    /// "Lock apps after you wake up" (Screen Time). Set to false to hide the
     /// whole feature: its Settings section disappears and nothing is locked.
     static let appLockEnabled = true
     /// Show the real Instagram, TikTok and Snapchat logo pictures (LogoInstagram,

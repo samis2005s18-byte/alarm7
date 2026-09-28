@@ -6,7 +6,7 @@ import Observation
 import SwiftUI
 import UIKit
 
-/// "Lock apps after I wake up", set per alarm on the Add Alarm page: once
+/// "Lock apps after you wake up", set per alarm on the Add Alarm page: once
 /// that alarm is walked off, the apps chosen for it stay locked (Screen Time
 /// shield) for the chosen time, then unlock by themselves via the
 /// AppLockMonitor extension.
@@ -19,8 +19,8 @@ final class AppLocker {
     static let shared = AppLocker()
 
     /// Minutes the apps stay locked after waking.
-    /// The stops on the lock-time slider (1 minute to 2 hours).
-    static let durations = [1, 5, 10, 15, 20, 30, 45, 60, 90, 120]
+    /// The stops on the lock-time slider (1 minute to 1 hour).
+    static let durations = [1, 5, 10, 15, 20, 30, 45, 60]
     static let defaultMinutes = 15
 
     /// One alarm's app lock: which apps, and for how long.
@@ -127,7 +127,7 @@ final class AppLocker {
     }
 }
 
-/// "Lock apps after I wake up" on the Add Alarm page. It's the one Premium
+/// "Lock apps after you wake up" on the Add Alarm page. It's the one Premium
 /// feature: sample icons show what it does, turning it on asks free users to
 /// upgrade first, then asks for Screen Time access and opens Apple's picker.
 struct AppLockAlarmSection: View {
@@ -150,7 +150,7 @@ struct AppLockAlarmSection: View {
     var body: some View {
         Section {
             Toggle(isOn: Binding(get: { isOn }, set: { on in Task { await setOn(on) } })) {
-                Label("Lock apps after I wake up", systemImage: "lock.fill")
+                Label("Lock apps after you wake up", systemImage: "lock.fill")
             }
             .tint(Theme.neutralActive)
 
@@ -171,7 +171,7 @@ struct AppLockAlarmSection: View {
                 Text("Alarm7 needs Screen Time access to lock apps. Turn it on in the Settings app under Screen Time.")
                     .foregroundStyle(Theme.accent)
             } else if !hasPremium {
-                Text("App Lock is Premium: lock any apps you choose for 1 minute to 2 hours after you wake up. Everything else in Alarm7 is free.")
+                Text("App Lock is Premium: lock any apps you choose for 1 minute to 1 hour after you wake up. Everything else in Alarm7 is free.")
             } else if isOn {
                 Text("After you walk off this alarm, these apps stay locked for the time you choose, then open again by themselves. Tip: search for Instagram, TikTok or Snapchat, or open the Social group.")
             }
@@ -270,7 +270,7 @@ struct AppLockAlarmSection: View {
 
     // MARK: - How long
 
-    /// A slider from 1 minute to 2 hours, always shown, with the chosen time
+    /// A slider from 1 minute to 1 hour, always shown, with the chosen time
     /// in big type above it and a sentence saying exactly how long it will be.
     private var durationBar: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
@@ -292,7 +292,7 @@ struct AppLockAlarmSection: View {
             } minimumValueLabel: {
                 Text("1 min").font(.caption2).foregroundStyle(Theme.textSecondary)
             } maximumValueLabel: {
-                Text("2 hr").font(.caption2).foregroundStyle(Theme.textSecondary)
+                Text("1 hr").font(.caption2).foregroundStyle(Theme.textSecondary)
             }
             .tint(Theme.textPrimary)
             .accessibilityValue(Self.durationText(minutes))

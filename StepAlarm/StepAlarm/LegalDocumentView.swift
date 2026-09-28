@@ -121,7 +121,7 @@ enum LegalText {
 
     **App Locking (Screen Time)**
 
-    If you use "Lock apps after I wake up", Alarm7 uses Apple's Screen Time to lock the apps you choose. Apple never tells Alarm7 which apps you picked; the app only receives private codes it can use to show and lock them, and these stay on your device.
+    If you use "Lock apps after you wake up", Alarm7 uses Apple's Screen Time to lock the apps you choose. Apple never tells Alarm7 which apps you picked; the app only receives private codes it can use to show and lock them, and these stay on your device.
 
     **Alarms & Settings**
 

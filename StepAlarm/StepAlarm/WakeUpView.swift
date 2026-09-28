@@ -19,7 +19,7 @@ struct WakeUpView: View {
     var diagnostics: String = ""
     /// Shown only for alarms with Emergency stop turned on.
     var onEmergencyStop: (() -> Void)? = nil
-    /// When "Lock apps after I wake up" has locked apps, until when.
+    /// When "Lock apps after you wake up" has locked apps, until when.
     var appsLockedUntil: Date? = nil
 
     struct RepeatOffer {
