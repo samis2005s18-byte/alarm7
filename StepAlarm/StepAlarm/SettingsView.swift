@@ -66,18 +66,18 @@ struct SettingsView: View {
                     Section("Subscription") {
                         if !SubscriptionStore.purchasesEnabled {
                             HStack {
-                                Label("Alarm7 Pro", systemImage: "crown.fill")
+                                Label("Alarm7 Premium", systemImage: "crown.fill")
                                 Spacer()
                                 Text("Coming soon")
                                     .font(.subheadline)
                                     .foregroundStyle(Theme.textSecondary)
                             }
                         } else if subscriptions.isPro {
-                            Label("Alarm7 Pro is active", systemImage: "checkmark.seal.fill")
+                            Label("Alarm7 Premium is active", systemImage: "checkmark.seal.fill")
                                 .foregroundStyle(Theme.textPrimary)
                         } else {
                             Button { onShowPaywall() } label: {
-                                Label("Upgrade to Pro", systemImage: "crown.fill")
+                                Label("Get Premium: Lock apps", systemImage: "crown.fill")
                             }
                         }
                         if SubscriptionStore.purchasesEnabled {

@@ -23,8 +23,11 @@ final class SubscriptionStore {
 
     @ObservationIgnored private var updatesTask: Task<Void, Never>?
 
-    /// Whether Pro features (more alarms, higher step goals, repeat) are unlocked.
-    var hasFullAccess: Bool { !Self.proVisible || isPro }
+    /// Every alarm feature (unlimited alarms, 30 steps, repeat) is free for
+    /// everyone. The old Pro limits still check this, so it's always true.
+    var hasFullAccess: Bool { true }
+    /// App Lock is the one Premium feature.
+    var hasPremium: Bool { !Self.proVisible || isPro }
 
     var monthly: Product? { products.first { $0.id == Self.monthlyID } }
     var yearly: Product? { products.first { $0.id == Self.yearlyID } }

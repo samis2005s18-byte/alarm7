@@ -1,8 +1,9 @@
 import StoreKit
 import SwiftUI
 
-/// Subscription page: Yearly $29.99 and Monthly $4.99 (prices come from the
-/// App Store; the fallbacks below only show while they load).
+/// Premium page: unlocks App Lock (the only paid feature). Yearly $29.99 and
+/// Monthly $4.99 (prices come from the App Store; the fallbacks below only
+/// show while they load).
 struct PaywallView: View {
     var onClose: () -> Void
 
@@ -32,19 +33,27 @@ struct PaywallView: View {
 
             ScrollView {
                 VStack(spacing: 24) {
-                    Image(systemName: "figure.walk.circle.fill")
+                    Image(systemName: "lock.circle.fill")
                         .font(.system(size: 72))
                         .foregroundStyle(Theme.textPrimary)
                         .padding(.top, 8)
 
-                    Text(store.isPro ? "You're Alarm7 Pro" : "Alarm7 Pro")
-                        .font(.system(size: 34, weight: .semibold))
-                        .foregroundStyle(Theme.textPrimary)
+                    VStack(spacing: Theme.Spacing.sm) {
+                        Text(store.isPro ? "You're Premium" : "Alarm7 Premium")
+                            .font(.system(size: 34, weight: .semibold))
+                            .foregroundStyle(Theme.textPrimary)
+                        Text("Every alarm feature is free. Premium adds App Lock.")
+                            .font(.callout)
+                            .multilineTextAlignment(.center)
+                            .foregroundStyle(Theme.textSecondary)
+                    }
+
+                    SampleAppIcons(size: 52)
 
                     VStack(alignment: .leading, spacing: 14) {
-                        feature("Unlimited alarms (3 free)")
-                        feature("Step goals up to 30 (15 free)")
-                        feature("Repeat schedules — daily, weekdays, custom")
+                        feature("Lock Instagram, TikTok, Snapchat and more after you wake up")
+                        feature("You choose how long they stay locked")
+                        feature("They open again by themselves")
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 

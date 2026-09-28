@@ -18,7 +18,7 @@ final class AppLocker {
     static let shared = AppLocker()
 
     /// Minutes the apps stay locked after waking.
-    static let durations = [10, 15, 30, 60]
+    static let durations = [10, 15, 30, 60, 120]
     static let defaultMinutes = 15
 
     /// One alarm's app lock: which apps, and for how long.
@@ -85,7 +85,7 @@ final class AppLocker {
 
     /// Called right after an alarm is walked off (or emergency-stopped).
     func lockAfterWaking(alarmID: UUID) {
-        guard AppConfig.appLockEnabled, isAuthorized, let plan = plan(for: alarmID), plan.hasApps else { return }
+        guard AppConfig.appLockEnabled, SubscriptionStore.shared.hasPremium, isAuthorized, let plan = plan(for: alarmID), plan.hasApps else { return }
         let selection = plan.selection
 
         let store = ManagedSettingsStore(named: .alarm7AppLock)
@@ -125,14 +125,20 @@ final class AppLocker {
     }
 }
 
-/// "Lock apps after I wake up" on the Add Alarm page: pick apps (shown with
-/// their real icons) and how long they stay locked after this alarm.
+/// "Lock apps after I wake up" on the Add Alarm page. It's the one Premium
+/// feature: sample icons show what it does, turning it on asks free users to
+/// upgrade first, then asks for Screen Time access and opens Apple's picker.
 struct AppLockAlarmSection: View {
     @Binding var isOn: Bool
     @Binding var selection: FamilyActivitySelection
     @Binding var minutes: Int
     @State private var showPicker = false
+    @State private var showPaywall = false
+    /// Turning on is waiting for the user to finish on the Premium page.
+    @State private var turnOnAfterPaywall = false
     @State private var permissionDenied = false
+
+    private var hasPremium: Bool { SubscriptionStore.shared.hasPremium }
 
     private var hasApps: Bool {
         !selection.applicationTokens.isEmpty || !selection.categoryTokens.isEmpty
@@ -142,35 +148,46 @@ struct AppLockAlarmSection: View {
     var body: some View {
         Section {
             Toggle(isOn: Binding(get: { isOn }, set: { on in Task { await setOn(on) } })) {
-                Label("Lock apps after I wake up", systemImage: "lock.fill")
+                HStack(spacing: Theme.Spacing.sm) {
+                    Label("Lock apps after I wake up", systemImage: "lock.fill")
+                    if !hasPremium { PremiumBadge() }
+                }
             }
             .tint(Theme.neutralActive)
 
+            Button {
+                Theme.tap()
+                if isOn { showPicker = true } else { Task { await setOn(true) } }
+            } label: {
+                chosenAppsRow
+            }
+            .buttonStyle(.pressable)
+            .accessibilityLabel(hasApps ? "\(chosenCount) apps chosen. Add or remove apps" : "Choose apps to lock")
+
             if isOn {
-                Button {
-                    Theme.tap()
-                    showPicker = true
-                } label: {
-                    chosenAppsRow
-                }
-                .buttonStyle(.pressable)
-                .accessibilityLabel(hasApps ? "\(chosenCount) apps chosen. Add or remove apps" : "Choose apps to lock")
-                Picker(selection: $minutes) {
-                    ForEach(AppLocker.durations, id: \.self) { Text("\($0) min").tag($0) }
-                } label: {
-                    Label("Apps open again after", systemImage: "hourglass")
-                }
+                durationBar
             }
         } footer: {
             if permissionDenied {
                 Text("Alarm7 needs Screen Time access to lock apps. Turn it on in the Settings app under Screen Time.")
                     .foregroundStyle(Theme.accent)
+            } else if !hasPremium {
+                Text("App Lock is a Premium feature. Everything else in Alarm7 is free.")
             } else if isOn {
-                Text("After you walk off this alarm, these apps stay locked for the time you choose, then open again by themselves. Tip: search for Instagram, TikTok or Facebook, or open the Social group.")
+                Text("After you walk off this alarm, these apps stay locked for the time you choose, then open again by themselves. Tip: search for Instagram, TikTok or Snapchat, or open the Social group.")
             }
         }
         .familyActivityPicker(isPresented: $showPicker, selection: $selection)
+        .sheet(isPresented: $showPaywall, onDismiss: {
+            guard turnOnAfterPaywall else { return }
+            turnOnAfterPaywall = false
+            if hasPremium { Task { await setOn(true) } }
+        }) {
+            PaywallView { showPaywall = false }
+        }
     }
+
+    // MARK: - Chosen apps
 
     /// Apps first, then categories (e.g. "Social") — these are what the row's
     /// icon stack draws from.
@@ -188,34 +205,39 @@ struct AppLockAlarmSection: View {
     private static let visibleIcons = 3
     private static let iconSize: CGFloat = 34
 
-    /// One tappable row: the first few chosen apps as overlapping real icons
-    /// (Instagram, TikTok, Snapchat…), "•••" when there are more, and a "+"
-    /// that says more can be added. Tapping anywhere opens Apple's picker.
+    /// One tappable row. Before any apps are picked it shows sample icons
+    /// (Instagram, TikTok, Snapchat) so it's clear what this does; after,
+    /// the first few chosen apps as overlapping real icons, "•••" when there
+    /// are more, and a "+". Tapping opens Apple's picker (or turns it on).
     private var chosenAppsRow: some View {
         HStack(spacing: Theme.Spacing.md) {
-            HStack(spacing: -10) {
-                if hasApps {
+            if isOn && hasApps {
+                HStack(spacing: -10) {
                     ForEach(chosen.prefix(Self.visibleIcons), id: \.self) { item in
                         chosenIcon(item)
                     }
                     if chosenCount > Self.visibleIcons {
                         iconBubble { Image(systemName: "ellipsis").font(.subheadline.weight(.bold)) }
                     }
+                    iconBubble { Image(systemName: "plus").font(.subheadline.weight(.bold)) }
                 }
-                iconBubble { Image(systemName: "plus").font(.subheadline.weight(.bold)) }
+            } else {
+                SampleAppIcons(size: Self.iconSize)
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(hasApps ? "\(chosenCount) \(chosenCount == 1 ? "app" : "apps") to lock" : "Choose apps to lock")
+                Text(isOn && hasApps
+                     ? "\(chosenCount) \(chosenCount == 1 ? "app" : "apps") to lock"
+                     : "Choose apps to lock")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(Theme.textPrimary)
-                Text(hasApps ? "Tap to add or remove" : "Instagram, TikTok, Snapchat…")
+                Text(isOn && hasApps ? "Tap to add or remove" : "Instagram, TikTok, Snapchat…")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
             }
 
             Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
+            Image(systemName: hasPremium ? "chevron.right" : "lock.fill")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Theme.textDisabled)
         }
@@ -247,9 +269,58 @@ struct AppLockAlarmSection: View {
             .overlay(Circle().stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
     }
 
+    // MARK: - How long
+
+    /// A row of big buttons (10 min … 2 hr) so the lock time is always in
+    /// plain sight and one tap to change.
+    private var durationBar: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+            Label("Apps open again after", systemImage: "hourglass")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.textPrimary)
+
+            HStack(spacing: Theme.Spacing.sm) {
+                ForEach(AppLocker.durations, id: \.self) { value in
+                    durationChip(value)
+                }
+            }
+        }
+        .padding(.vertical, Theme.Spacing.xs)
+    }
+
+    private func durationChip(_ value: Int) -> some View {
+        let selected = minutes == value
+        return Button {
+            Theme.tap()
+            minutes = value
+        } label: {
+            VStack(spacing: 0) {
+                Text(value < 60 ? "\(value)" : "\(value / 60)")
+                    .font(.headline)
+                    .monospacedDigit()
+                Text(value < 60 ? "min" : (value == 60 ? "hour" : "hours"))
+                    .font(.caption2)
+            }
+            .foregroundStyle(selected ? Theme.background : Theme.textPrimary)
+            .frame(maxWidth: .infinity, minHeight: Theme.minTapTarget + 8)
+            .background(selected ? Theme.textPrimary : Theme.surface,
+                        in: RoundedRectangle(cornerRadius: Theme.chipRadius, style: .continuous))
+        }
+        .buttonStyle(.pressable)
+        .accessibilityLabel(value < 60 ? "\(value) minutes" : "\(value / 60) \(value == 60 ? "hour" : "hours")")
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    // MARK: - Turning on
+
     private func setOn(_ on: Bool) async {
         guard on else {
             isOn = false
+            return
+        }
+        guard hasPremium else {
+            turnOnAfterPaywall = true
+            showPaywall = true
             return
         }
         if !AppLocker.shared.isAuthorized {
@@ -261,5 +332,61 @@ struct AppLockAlarmSection: View {
         permissionDenied = false
         isOn = true
         if !hasApps { showPicker = true }
+    }
+}
+
+/// Small "PREMIUM" tag next to the one paid feature.
+struct PremiumBadge: View {
+    var body: some View {
+        Label("PREMIUM", systemImage: "crown.fill")
+            .labelStyle(.titleAndIcon)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(.black)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(Color(red: 1, green: 0.8, blue: 0.2), in: Capsule())
+            .fixedSize()
+    }
+}
+
+/// Three look-alike app tiles (Instagram, TikTok and Snapchat colors) that
+/// show what App Lock is for before any real apps are picked. They're drawn,
+/// not the real logos, which Apple doesn't allow other apps to use.
+struct SampleAppIcons: View {
+    var size: CGFloat
+
+    private struct Sample: Identifiable {
+        let id: String
+        let colors: [Color]
+        let symbol: String
+        let symbolColor: Color
+    }
+
+    private static let samples = [
+        Sample(id: "Instagram",
+               colors: [Color(red: 0.51, green: 0.23, blue: 0.71), Color(red: 0.99, green: 0.11, blue: 0.11),
+                        Color(red: 0.99, green: 0.69, blue: 0.27)],
+               symbol: "camera", symbolColor: .white),
+        Sample(id: "TikTok", colors: [.black, Color(white: 0.12)], symbol: "music.note", symbolColor: .white),
+        Sample(id: "Snapchat", colors: [Color(red: 1, green: 0.99, blue: 0)], symbol: "bubble.left.fill",
+               symbolColor: .black),
+    ]
+
+    var body: some View {
+        HStack(spacing: -size * 0.28) {
+            ForEach(Self.samples) { sample in
+                RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
+                    .fill(LinearGradient(colors: sample.colors, startPoint: .bottomLeading, endPoint: .topTrailing))
+                    .overlay(
+                        Image(systemName: sample.symbol)
+                            .font(.system(size: size * 0.45, weight: .bold))
+                            .foregroundStyle(sample.symbolColor)
+                    )
+                    .overlay(RoundedRectangle(cornerRadius: size * 0.26, style: .continuous)
+                        .stroke(Color(.secondarySystemGroupedBackground), lineWidth: 2))
+                    .frame(width: size, height: size)
+            }
+        }
+        .accessibilityHidden(true)
     }
 }
