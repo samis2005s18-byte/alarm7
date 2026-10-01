@@ -73,7 +73,7 @@ struct OnboardingFlow: View {
     //
     // Both rows stay visible on the Permissions screen the whole time — the
     // user sees each one flip from a spinner to a checkmark (or an X) as
-    // "Allow Access" actually works through them, rather than being bounced
+    // "Continue" actually works through them, rather than being bounced
     // to a blank loading screen.
 
     private func requestPermissions() async {
@@ -348,7 +348,7 @@ private struct NoSnoozeGraphic: View {
 
 // MARK: - Screen 4: Permissions
 
-/// Per-row progress as "Allow Access" actually works through each system
+/// Per-row progress as "Continue" actually works through each system
 /// prompt — the whole point being that the user watches it happen instead
 /// of staring at a blank screen.
 fileprivate enum RowState: Equatable {
@@ -376,19 +376,25 @@ private struct PermissionsScreen: View {
 
     private var isBusy: Bool { alarmState == .requesting || motionState == .requesting }
     private var allGranted: Bool { alarmState == .granted && motionState == .granted }
+    /// Neutral wording only — App Review (5.1.1(iv)) rejects buttons like
+    /// "Allow Access" in front of a system permission prompt.
     private var buttonTitle: String {
         if allGranted { return "All set" }
-        if alarmState == .denied || motionState == .denied { return "Try Again" }
-        return "Allow Access"
+        return "Continue"
     }
 
     var body: some View {
         OnboardingPageChrome(showSkip: false, currentPage: 3, buttonTitle: buttonTitle, onSkip: {}, onButton: onAllow) {
             VStack(alignment: .leading, spacing: 20) {
-                Text("Two permissions")
+                Text("How Alarm7 works")
                     .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.top, 32)
+
+                Text("Alarm7 uses Alarms to ring at the time you set, and Motion & Fitness to count the steps that turn an alarm off. iOS will ask you about each one next. You can change this any time in Settings.")
+                    .font(.subheadline)
+                    .foregroundStyle(Color(white: 0.75))
+                    .fixedSize(horizontal: false, vertical: true)
 
                 VStack(spacing: 12) {
                     permissionRow(state: alarmState, text: "Ring your alarms") {
