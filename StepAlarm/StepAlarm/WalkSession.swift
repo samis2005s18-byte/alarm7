@@ -139,8 +139,8 @@ final class WalkSession {
     // MARK: - Counting
     //
     // Steps are detected straight from the motion sensors (see StepDetector),
-    // so each one counts the moment it happens and shaking is rejected. The
-    // alarm-sound background mode keeps this running with the screen locked.
+    // so each one counts the moment it happens and shaking is rejected. Steps
+    // taken while the phone is locked are picked up by `refresh()`.
 
     private var usesStepDetector: Bool { motionManager.isDeviceMotionAvailable }
 

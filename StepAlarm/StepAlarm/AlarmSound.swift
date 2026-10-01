@@ -48,8 +48,9 @@ final class AlarmSound {
         guard wantsSound else { return }
         if let player, player.isPlaying { return }
         do {
-            // .playback rings even with the Silent switch on, and keeps
-            // playing with the screen locked (UIBackgroundModes: audio).
+            // .playback rings even with the Silent switch on. There's no
+            // background audio mode, so it pauses if the phone is locked —
+            // AlarmKit's backup rings cover that until the steps are walked.
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default)
             try session.setActive(true)
