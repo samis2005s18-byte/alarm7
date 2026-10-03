@@ -18,7 +18,7 @@ Alarm7 is an iPhone alarm that only turns off after the user walks a set number 
 - `StopIntent.swift` — the alert's X opens the app on the walk screen (openAppWhenRun); Walk button does the same.
 - `StepDetector.swift` — our own step detection from 50 Hz motion data (vertical bumps in a steady rhythm; rejects shaking by speed, strength, twisting and irregularity; turning around the vertical axis is ignored; resumes after pauses ≤4 s). Tuned with simulations; the first steps show instantly, confirmed steps never go backwards.
 - `WalkSession.swift` — the walk: feeds StepDetector, finishes the alarm when the goal is reached, optional **Emergency stop** (per alarm, hold 10 s, red caution on Add Alarm page).
-- `AlarmSound.swift` — in-app beeping + vibration while walking; keeps retrying until iOS lets it play (fixed "no sound until app killed" bug). Uses the audio background mode.
+- `AlarmSound.swift` — in-app beeping + vibration while walking; keeps retrying until iOS lets it play (fixed "no sound until app killed" bug). **No audio background mode** (removed Oct 1 for Apple 2.5.4) — the beep pauses if the phone is locked; AlarmKit backup rings cover that. Don't add `UIBackgroundModes: audio` back.
 - `AddAlarmView.swift` — time wheel, big step number with −/+ and 10/15/20/30 chips, repeat days, Emergency stop. Vibration is NOT on this page (Sep 27): one switch in Settings, on by default, applies to every alarm. (Label field removed on purpose.)
 - Pro/subscriptions: on `main` (1.0) they are **hidden** (`proVisible = false`, `purchasesEnabled = false`). On `app-lock` (1.1) the app is **fully free except App Lock, which is Premium** (Sep 27: `hasFullAccess` is always true; `hasPremium` gates App Lock; in-app wording says "Premium"; Add Alarm shows a PREMIUM badge, Instagram/TikTok/Snapchat tiles (real logo pictures `LogoInstagram`/`LogoTikTok`/`LogoSnapchat` in Assets when `AppConfig.showRealAppLogos` is on and they exist — not added yet, Sami to send a home-screen screenshot; drawn look-alikes otherwise) and a "PREMIUM ONLY" section header, an always-visible 1 min–1 hr slider (stops in `AppLocker.durations`) with the time in big type and "Apps stay locked for …"; Premium page lists what Premium adds (no "Free for everyone" box — Sami removed it); free users tapping it see the Premium page first). Plans: monthly `alarm7.pro.monthly` $4.99, yearly `alarm7.pro.annual` $29.99, both in the "Alarm7 Pro" group (`alarm7.pro.yearly` was made in a separate group by mistake — don't use it). Terms/Privacy on 1.1 describe the subscription.
 - `AppConfig` (in `AppSettings.swift`): `showDeveloperTools` and `showStepDiagnostics` are off for store builds.
@@ -52,3 +52,14 @@ Alarm7 is an iPhone alarm that only turns off after the user walks a set number 
 - Privacy policy (Google Doc, must be shared "Anyone with the link"): https://docs.google.com/document/d/1_5QsthejEJ2jFbw_NjQbvZDosow_1cawGzp1qi0uNOs/edit
 - Reviewer tip in notes: turn on Emergency stop on the Add Alarm page to test without walking.
 - Support email: sami@veehealth.ca
+
+## LIVE on the App Store (confirmed Oct 3, 2026)
+- https://apps.apple.com/us/app/alarm7/id6814536946 — free, Premium $4.99/mo or $29.99/yr (1.1 approved). Requires iOS 26+ (~79% of iPhones per Apple, June 2026).
+- Listing also showed Mac (Apple Silicon) and Vision Pro; advised Sami to uncheck both in Pricing and Availability (no step counting there).
+
+## Version 1.1 rejection (Oct 1, 2026) — 5.1.1(iv), 2.1(b), 3.1.2(c)
+- 5.1.1(iv): onboarding permissions button must never say "Allow Access" — now "Continue" with an explanation of why each permission is needed (commit 598f1a8, pushed → new build).
+- 3.1.2(c): App Description now ends with Premium plan info + Terms of Use (Apple standard EULA) and Privacy Policy links. App Review Notes rewritten for 1.1 (in-app purchases, App Lock, how to reach the paywall). Privacy Policy Google Doc already has the 1.1 text.
+- 2.1(b): both plans in "Alarm7 Pro" have review screenshots; they must be attached on the version page ("In-App Purchases and Subscriptions" → +) together with the new build. Sami presses "Update Review"/submit.
+- 2.5.4 (background audio): removed `audio` from `UIBackgroundModes` in `StepAlarm/StepAlarm/Info.plist` on `app-lock`. `main` (1.0) still has it — remove there too if Apple flags 1.0.
+- Oct 1, 4:18 PM: build 25 (commit 06cf83d) attached, replied to App Review, resubmitted. Version 1.1 (25) + Alarm7 Pro Monthly/Yearly + group are all **Waiting for Review**.
