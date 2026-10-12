@@ -19,7 +19,10 @@ struct AddAlarmView: View {
     @State private var locksApps: Bool
     @State private var lockSelection: FamilyActivitySelection
     @State private var lockMinutes: Int
+    @State private var challenge: Challenge
+    @State private var showCameraAlert = false
     @State private var showPaywall = false
+    private var session = WalkSession.shared
 
     private var isPro: Bool { SubscriptionStore.shared.hasFullAccess }
     private static let freeStepLimit = 15
@@ -42,6 +45,7 @@ struct AddAlarmView: View {
         _locksApps = State(initialValue: lockPlan?.hasApps ?? false)
         _lockSelection = State(initialValue: lockPlan?.selection ?? FamilyActivitySelection())
         _lockMinutes = State(initialValue: lockPlan?.minutes ?? AppLocker.defaultMinutes)
+        _challenge = State(initialValue: alarm.challenge)
     }
 
     var body: some View {
@@ -58,6 +62,7 @@ struct AddAlarmView: View {
             timePicker
 
             List {
+                challengeSection
                 stepsSection
                 repeatSection
                 if AppConfig.appLockEnabled {
@@ -79,6 +84,19 @@ struct AddAlarmView: View {
         .background(Theme.background.ignoresSafeArea())
         .sheet(isPresented: $showPaywall) {
             PaywallView { showPaywall = false }
+        }
+        .fullScreenCover(isPresented: Binding(get: { session.isActive && session.isTrial }, set: { _ in })) {
+            WakeUpScreen()
+        }
+        .alert("Camera is off", isPresented: $showCameraAlert) {
+            Button("Open Settings") {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Squats need the camera to see you. Open Settings, tap Alarm7, and turn on Camera.")
         }
     }
 
@@ -123,27 +141,102 @@ struct AddAlarmView: View {
             .frame(maxWidth: .infinity)
     }
 
+    // MARK: - Walk or squats
+
+    private var challengeSection: some View {
+        Section {
+            HStack(spacing: Theme.Spacing.sm) {
+                challengeOption(.steps, title: "Walk") {
+                    Image("WalkingIcon")
+                        .renderingMode(.template)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 18, height: 24)
+                }
+                challengeOption(.squats, title: "Squats") {
+                    Image(systemName: Challenge.squatSymbol)
+                        .font(.title2)
+                        .frame(height: 24)
+                }
+            }
+            .padding(.vertical, Theme.Spacing.xs)
+        } header: {
+            Text("To turn it off")
+        }
+    }
+
+    private func challengeOption<Icon: View>(_ option: Challenge, title: String, @ViewBuilder icon: () -> Icon) -> some View {
+        let selected = challenge == option
+        return Button {
+            guard !selected else { return }
+            Theme.tap()
+            if option == .squats {
+                chooseSquats()
+            } else {
+                challenge = option
+            }
+        } label: {
+            VStack(spacing: 6) {
+                icon()
+                Text(title).font(.subheadline.weight(.semibold))
+            }
+            .foregroundStyle(selected ? Theme.background : Theme.textPrimary)
+            .frame(maxWidth: .infinity, minHeight: 64)
+            .background(selected ? Theme.textPrimary : Theme.surface, in: RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.pressable)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// Squats need the camera, so ask now — not at 6 a.m. when the alarm rings.
+    private func chooseSquats() {
+        Task {
+            if await PoseCamera.requestAccess() {
+                challenge = .squats
+                if Int(steps) > 20 { steps = 10 }
+            } else {
+                showCameraAlert = true
+            }
+        }
+    }
+
+    private func trySquats() {
+        Task {
+            guard await PoseCamera.requestAccess() else {
+                showCameraAlert = true
+                return
+            }
+            session.beginSquatTrial()
+        }
+    }
+
     // MARK: - Steps
+
+    private var unitWord: String { challenge == .squats ? "Squats" : "Steps" }
 
     private var stepsSection: some View {
         Section {
             VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                 HStack {
                     Label {
-                        Text("Steps to dismiss")
+                        Text("\(unitWord) to dismiss")
                     } icon: {
-                        Image("WalkingIcon")
-                            .renderingMode(.template)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 15, height: 20)
+                        if challenge == .squats {
+                            Image(systemName: Challenge.squatSymbol)
+                        } else {
+                            Image("WalkingIcon")
+                                .renderingMode(.template)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 15, height: 20)
+                        }
                     }
                     Spacer()
                     HStack(spacing: 4) {
                         if !isPro && Int(steps) >= Self.freeStepLimit {
                             Image(systemName: "lock.fill").font(.caption)
                         }
-                        Text("\(Int(steps)) \(Int(steps) == 1 ? "step" : "steps")")
+                        Text(challenge.amount(Int(steps)))
                     }
                 }
                 .font(.subheadline.weight(.medium))
@@ -165,19 +258,44 @@ struct AddAlarmView: View {
                 .frame(maxWidth: .infinity)
 
                 HStack(spacing: Theme.Spacing.sm) {
-                    presetChip(10)
-                    presetChip(15)
-                    presetChip(20)
-                    presetChip(30)
+                    if challenge == .squats {
+                        presetChip(5)
+                        presetChip(10)
+                        presetChip(15)
+                        presetChip(20)
+                    } else {
+                        presetChip(10)
+                        presetChip(15)
+                        presetChip(20)
+                        presetChip(30)
+                    }
                 }
 
-                Text("\(Int(steps)) \(Int(steps) == 1 ? "step" : "steps") ≈ \(Int(steps)) sec of walking")
+                Text(challenge == .squats
+                     ? "\(challenge.amount(Int(steps))) ≈ \(Int(steps) * 3) sec"
+                     : "\(challenge.amount(Int(steps))) ≈ \(Int(steps)) sec of walking")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
+
+                if challenge == .squats {
+                    Button(action: trySquats) {
+                        Label("Try it now", systemImage: "camera.fill")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Theme.background)
+                            .frame(maxWidth: .infinity, minHeight: Theme.minTapTarget)
+                            .background(Theme.textPrimary, in: Capsule())
+                    }
+                    .buttonStyle(.pressable)
+                    .padding(.top, Theme.Spacing.xs)
+                }
             }
             .padding(.vertical, Theme.Spacing.xs)
         } footer: {
-            Text("No snooze: tapping Stop rings the alarm again until you walk.")
+            if challenge == .squats {
+                Text("When it rings, stand your phone up on the floor or a low table with the screen facing you, step back until your whole body shows, then squat. The camera only counts squats — nothing is recorded or saved. No snooze: tapping Stop rings the alarm again until you squat.")
+            } else {
+                Text("No snooze: tapping Stop rings the alarm again until you walk.")
+            }
         }
     }
 
@@ -202,7 +320,7 @@ struct AddAlarmView: View {
         }
         .buttonStyle(.pressable)
         .disabled(atLimit)
-        .accessibilityLabel(delta > 0 ? "More steps" : "Fewer steps")
+        .accessibilityLabel(delta > 0 ? "More \(unitWord.lowercased())" : "Fewer \(unitWord.lowercased())")
     }
 
     private func presetChip(_ value: Int) -> some View {
@@ -314,7 +432,7 @@ struct AddAlarmView: View {
             .tint(Theme.accent)
             .onChange(of: emergencyStop) { _, _ in Theme.tap() }
         } footer: {
-            Text("Caution: this lets you turn off the alarm without walking by holding a button for 10 seconds. Only turn it on if you might not be able to walk, for example because of an injury.")
+            Text("Caution: this lets you turn off the alarm without walking or squatting by holding a button for 10 seconds. Only turn it on if you might not be able to walk, for example because of an injury.")
                 .foregroundStyle(Theme.accent)
         }
     }
@@ -327,6 +445,7 @@ struct AddAlarmView: View {
         updated.steps = Int(steps)
         updated.days = isPro ? days : []
         updated.emergencyStop = emergencyStop
+        updated.challenge = challenge
         if AppConfig.appLockEnabled {
             let plan = AppLocker.Plan(selection: lockSelection, minutes: lockMinutes)
             AppLocker.shared.setPlan(locksApps && plan.hasApps ? plan : nil, for: alarm.id)

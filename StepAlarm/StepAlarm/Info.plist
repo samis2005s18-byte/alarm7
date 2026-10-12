@@ -6,6 +6,8 @@
 	<false/>
 	<key>NSAlarmKitUsageDescription</key>
 	<string>Alarm7 needs alarm access to wake you up.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>For alarms set to Squats, Alarm7 uses the front camera to count your squats. The video stays on your iPhone and is never recorded or sent anywhere.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>Alarm7 counts your steps to turn the alarm off.</string>
 	<key>NSSupportsLiveActivities</key>

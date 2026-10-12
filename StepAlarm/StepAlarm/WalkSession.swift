@@ -21,6 +21,20 @@ final class WalkSession {
     private(set) var motionMessage: String?
     /// This alarm allows "hold to stop" without walking (set per alarm).
     private(set) var emergencyStopAllowed = false
+    /// Walk or squat. `steps` / `goal` count squats when this is `.squats`.
+    private(set) var challenge: Challenge = .steps
+    /// A squat try-out started from the Add Alarm page (shown over that page).
+    private(set) var isTrial = false
+
+    // Squats: the latest body seen by the camera, for the lines on screen.
+    private(set) var pose: BodyPose?
+    /// 0 = standing, 1 = low enough to count.
+    private(set) var squatDepth = 0.0
+    private(set) var squatReady = false
+    private var lastBodySeen: Date?
+    @ObservationIgnored private let camera = PoseCamera()
+    @ObservationIgnored private var squatDetector = SquatDetector()
+    var cameraSession: AVCaptureSession { camera.session }
 
     /// Snapshot taken at the moment of completion, for the "Set again for
     /// tomorrow?" offer — `alarmID` itself doesn't survive `close()`.
@@ -63,6 +77,8 @@ final class WalkSession {
         guard !isActive else { return }
         let settings = AlarmGoals.settings(for: alarmID)
         emergencyStopAllowed = settings?.emergencyStop ?? false
+        challenge = settings?.challenge ?? .steps
+        isTrial = false
         start(
             alarmID: alarmID, goal: settings?.stepGoal ?? 15, label: settings?.label ?? "",
             // Follows the Vibration switch in Settings, even for alarms saved earlier.
@@ -74,6 +90,17 @@ final class WalkSession {
     func beginDemo(goal: Int = 15) {
         guard !isActive else { return }
         emergencyStopAllowed = false
+        challenge = .steps
+        isTrial = false
+        start(alarmID: nil, goal: goal, label: "", vibrationEnabled: true, hour: 7, minute: 0, demo: true)
+    }
+
+    /// "Try it now" on the Add Alarm page: real camera squats, no alarm sound.
+    func beginSquatTrial(goal: Int = 3) {
+        guard !isActive else { return }
+        emergencyStopAllowed = false
+        challenge = .squats
+        isTrial = true
         start(alarmID: nil, goal: goal, label: "", vibrationEnabled: true, hour: 7, minute: 0, demo: true)
     }
 
@@ -120,7 +147,10 @@ final class WalkSession {
         isActive = true
         UIApplication.shared.isIdleTimerDisabled = true
 
-        if demo {
+        if challenge == .squats {
+            if !demo { AlarmSound.shared.start() }
+            startSquats(demo: demo)
+        } else if demo {
             demoTask = Task { [weak self] in
                 while !Task.isCancelled {
                     try? await Task.sleep(for: .milliseconds(700))
@@ -134,6 +164,57 @@ final class WalkSession {
             AlarmSound.shared.start()
             startPedometer()
         }
+    }
+
+    // MARK: - Squats
+
+    private func startSquats(demo: Bool) {
+        squatDetector = SquatDetector()
+        pose = nil
+        squatDepth = 0
+        squatReady = false
+        lastBodySeen = nil
+        guard PoseCamera.isAuthorized, PoseCamera.hasFrontCamera else {
+            if demo {
+                motionMessage = "Allow camera access in Settings to use squats."
+                return
+            }
+            // Never leave an alarm that can't be turned off: walk instead.
+            challenge = .steps
+            motionMessage = "The camera is off, so walk your steps instead."
+            startPedometer()
+            return
+        }
+        camera.onPose = { [weak self] pose, time in
+            MainActor.assumeIsolated { self?.handlePose(pose, time: time) }
+        }
+        camera.start()
+    }
+
+    private func handlePose(_ newPose: BodyPose?, time: TimeInterval) {
+        guard isActive, !isComplete, challenge == .squats else { return }
+        pose = newPose
+        if newPose != nil { lastBodySeen = Date() }
+        let counted = squatDetector.add(.init(time: time, depth: newPose?.depth))
+        squatDepth = squatDetector.progress
+        if squatDetector.hasStood != squatReady { squatReady = squatDetector.hasStood }
+        if counted > 0 { apply(count: squatDetector.count, error: nil) }
+    }
+
+    /// What to tell the person on the squat screen right now.
+    private var squatStatus: String {
+        let now = Date()
+        guard let pose else {
+            if let lastBodySeen, now.timeIntervalSince(lastBodySeen) < 5 { return "Step back into view" }
+            if now.timeIntervalSince(startDate) > 8 { return "Can't see you. Turn on a light and step back" }
+            return "Stand the phone up, then step back so your whole body shows"
+        }
+        if pose.depth == nil { return "Step back so your legs show" }
+        if !squatReady { return "Stand up straight to start" }
+        if steps == 0 { return squatDepth >= 1 ? "Now stand back up" : "Squat down low, then stand up" }
+        if squatDepth >= 1 { return "Good! Stand back up" }
+        let ratio = Double(steps) / Double(max(goal, 1))
+        return ratio < 0.5 ? "Nice, keep going!" : "Almost there!"
     }
 
     // MARK: - Counting
@@ -233,7 +314,7 @@ final class WalkSession {
             // Coming to the front is the surest moment iOS allows the sound.
             AlarmSound.shared.ensurePlaying()
         }
-        guard isActive, !isDemo, CMPedometer.isStepCountingAvailable() else { return }
+        guard isActive, !isDemo, challenge == .steps, CMPedometer.isStepCountingAvailable() else { return }
         let sessionStart = startDate
         Task {
             let now = Date()
@@ -317,6 +398,7 @@ final class WalkSession {
     var progressStatus: String {
         if isComplete { return "You're up" }
         if isVolumeLow { return "Turn your volume up" }
+        if challenge == .squats { return squatStatus }
         if steps == 0 { return "Start walking…" }
         let ratio = Double(steps) / Double(max(goal, 1))
         return ratio < 0.5 ? "Nice, keep going!" : "Almost there!"
@@ -375,6 +457,7 @@ final class WalkSession {
     private func stopCounting() {
         pedometer.stopUpdates()
         motionManager.stopDeviceMotionUpdates()
+        camera.stop()
         AlarmSound.shared.stop()
         demoTask?.cancel()
         demoTask = nil
@@ -382,8 +465,11 @@ final class WalkSession {
 
     private func close() {
         AlarmSound.shared.stop()
+        camera.stop()
+        pose = nil
         isActive = false
         isComplete = false
+        isTrial = false
         alarmID = nil
         UIApplication.shared.isIdleTimerDisabled = false
     }

@@ -159,7 +159,8 @@ struct ContentView: View {
         } message: {
             Text("Alarm7 can't set an alarm until both Alarms and Motion & Fitness are allowed. Open Settings, tap Alarm7, and turn both on.")
         }
-        .fullScreenCover(isPresented: Binding(get: { session.isActive }, set: { _ in })) {
+        // A squat try-out is shown by the Add Alarm page itself (it's on top).
+        .fullScreenCover(isPresented: Binding(get: { session.isActive && !session.isTrial }, set: { _ in })) {
             WakeUpScreen()
         }
         .fullScreenCover(isPresented: Binding(get: { !settings.hasCompletedOnboarding }, set: { _ in })) {
@@ -214,7 +215,10 @@ struct ContentView: View {
     /// end it — it can't be switched off, edited away, or deleted.
     private func blockIfRinging(_ id: UUID) -> Bool {
         guard AlarmGoals.isRinging(id) else { return false }
-        toastMessage = ToastMessage(text: "Walk your steps to turn this alarm off", systemImage: "figure.walk")
+        let squats = store.alarms.first { $0.id == id }?.challenge == .squats
+        toastMessage = squats
+            ? ToastMessage(text: "Do your squats to turn this alarm off", systemImage: Challenge.squatSymbol)
+            : ToastMessage(text: "Walk your steps to turn this alarm off", systemImage: "figure.walk")
         session.resumeIfAlarmRinging()
         return true
     }
@@ -324,13 +328,17 @@ struct ContentView: View {
 
                     HStack(spacing: Theme.Spacing.md) {
                         Label {
-                            Text(alarm.stepsText)
+                            Text(alarm.goalText)
                         } icon: {
-                            Image("WalkingIcon")
-                                .renderingMode(.template)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 11, height: 15)
+                            if alarm.challenge == .squats {
+                                Image(systemName: Challenge.squatSymbol)
+                            } else {
+                                Image("WalkingIcon")
+                                    .renderingMode(.template)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 11, height: 15)
+                            }
                         }
                         Label(alarm.repeatText, systemImage: "repeat")
                         if AppConfig.appLockEnabled, AppLocker.shared.plan(for: alarm.id) != nil {

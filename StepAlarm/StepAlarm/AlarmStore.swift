@@ -1,6 +1,25 @@
 import Foundation
 import Observation
 
+/// What the user has to do to turn an alarm off.
+enum Challenge: String, Codable, CaseIterable {
+    /// Walk a number of steps (motion sensors).
+    case steps
+    /// Do a number of squats in front of the front camera.
+    case squats
+
+    /// "15 steps", "1 squat".
+    func amount(_ count: Int) -> String {
+        switch self {
+        case .steps: return "\(count) \(count == 1 ? "step" : "steps")"
+        case .squats: return "\(count) \(count == 1 ? "squat" : "squats")"
+        }
+    }
+
+    /// SF Symbol for squats; steps use the app's own "WalkingIcon" picture.
+    static let squatSymbol = "figure.strengthtraining.functional"
+}
+
 /// One saved alarm. `days` uses 0 = Sunday … 6 = Saturday; empty = ring once.
 struct AlarmItem: Identifiable, Codable, Hashable {
     var id = UUID()
@@ -23,15 +42,18 @@ struct AlarmItem: Identifiable, Codable, Hashable {
     /// Lets this alarm be turned off without walking by holding a button for
     /// 10 seconds on the Wake Up screen — for people who may not be able to walk.
     var emergencyStop: Bool = false
+    /// Walk or squat to turn it off. `steps` holds the count for either.
+    var challenge: Challenge = .steps
 
     enum CodingKeys: String, CodingKey {
         case id, hour, minute, steps, days, isOn, label, snoozeEnabled, vibrationEnabled, soundName, emergencyStop
+        case challenge
     }
 
     init(
         id: UUID = UUID(), hour: Int, minute: Int, steps: Int = 15, days: Set<Int> = [],
         isOn: Bool = true, label: String = "", snoozeEnabled: Bool = true, vibrationEnabled: Bool = true,
-        soundName: String = "Default", emergencyStop: Bool = false
+        soundName: String = "Default", emergencyStop: Bool = false, challenge: Challenge = .steps
     ) {
         self.id = id
         self.hour = hour
@@ -44,6 +66,7 @@ struct AlarmItem: Identifiable, Codable, Hashable {
         self.vibrationEnabled = vibrationEnabled
         self.soundName = soundName
         self.emergencyStop = emergencyStop
+        self.challenge = challenge
     }
 
     /// Custom decode so alarms saved before a field existed still load
@@ -61,6 +84,7 @@ struct AlarmItem: Identifiable, Codable, Hashable {
         vibrationEnabled = try c.decodeIfPresent(Bool.self, forKey: .vibrationEnabled) ?? true
         soundName = try c.decodeIfPresent(String.self, forKey: .soundName) ?? "Default"
         emergencyStop = try c.decodeIfPresent(Bool.self, forKey: .emergencyStop) ?? false
+        challenge = (try? c.decodeIfPresent(Challenge.self, forKey: .challenge)) ?? .steps
     }
 
     static func new(defaultSteps: Int = 15) -> AlarmItem {
@@ -73,7 +97,8 @@ struct AlarmItem: Identifiable, Codable, Hashable {
         Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: .now) ?? .now
     }
 
-    var stepsText: String { "\(steps) \(steps == 1 ? "step" : "steps")" }
+    /// "15 steps" or "10 squats".
+    var goalText: String { challenge.amount(steps) }
     var repeatText: String { days.isEmpty ? "Once" : Self.repeatSummary(days) }
 
     /// The next date/time this alarm will actually ring, or nil if it's off.
@@ -117,7 +142,7 @@ struct AlarmItem: Identifiable, Codable, Hashable {
     }
 
     var detail: String {
-        var text = "Alarm, \(steps) \(steps == 1 ? "step" : "steps")"
+        var text = "Alarm, \(goalText)"
         if !days.isEmpty { text += ", " + Self.repeatSummary(days) }
         return text
     }

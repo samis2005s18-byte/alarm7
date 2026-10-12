@@ -35,13 +35,13 @@ enum LegalText {
     static let terms = """
     **Alarm7 Terms of Use**
 
-    Last updated: September 27, 2026
+    Last updated: October 12, 2026
 
     These Terms of Use ("Terms") are an agreement between you and Sami ("we," "us," "our"), the developer of Alarm7 ("the app"). By downloading or using the app, you agree to these Terms. If you don't agree, don't use the app.
 
     **1. The App**
 
-    Alarm7 is an alarm clock app that turns off only after you walk a set number of steps, counted using your device's motion sensor. With an Alarm7 Premium subscription, it can also lock apps you choose for a while after you wake up ("App Lock").
+    Alarm7 is an alarm clock app that turns off only after you walk a set number of steps, counted using your device's motion sensor, or do a set number of squats, counted using your device's front camera. With an Alarm7 Premium subscription, it can also lock apps you choose for a while after you wake up ("App Lock").
 
     **2. Eligibility**
 
@@ -53,7 +53,7 @@ enum LegalText {
 
     **4. Free Features and Alarm7 Premium**
 
-    Alarm7 is free to download, and every alarm feature is free, including unlimited alarms, step goals, repeat days, and Emergency stop.
+    Alarm7 is free to download, and every alarm feature is free, including unlimited alarms, step goals, squats, repeat days, and Emergency stop.
 
     App Lock is the only paid feature. It needs an Alarm7 Premium subscription:
 
@@ -68,7 +68,7 @@ enum LegalText {
 
     **5. App Lock**
 
-    App Lock uses Apple's Screen Time and needs your permission to work. After you walk off an alarm that has App Lock turned on, the apps you chose stay locked for the time you picked (1 minute to 1 hour), then open again by themselves.
+    App Lock uses Apple's Screen Time and needs your permission to work. After you turn off an alarm that has App Lock turned on (by walking or squatting), the apps you chose stay locked for the time you picked (1 minute to 1 hour), then open again by themselves.
 
     • Locking and unlocking are done by iOS. Because of iOS, battery, or device settings, apps may sometimes unlock a little early or late, or not lock at all.
     • Don't lock apps you may need in an emergency. Alarm7 never blocks emergency calls.
@@ -81,7 +81,7 @@ enum LegalText {
 
     **7. Safety**
 
-    Alarm7 requires you to get up and walk. You are responsible for walking safely. Turn on a light, watch for stairs and obstacles, and don't walk if you feel dizzy, unwell, or unsteady. Don't use Alarm7 if walking right after waking up is unsafe for you because of a health condition, disability, or injury. Alarm7 is not a medical or fitness device and does not give medical advice. Step counts may not be exact.
+    Alarm7 requires you to get up and walk or do squats. You are responsible for doing this safely. Turn on a light, watch for stairs and obstacles, make sure you have room around you, and don't walk or squat if you feel dizzy, unwell, or unsteady. Don't use Alarm7 if walking or squatting right after waking up is unsafe for you because of a health condition, disability, or injury. Alarm7 is not a medical or fitness device and does not give medical advice. Step and squat counts may not be exact.
 
     **8. Acceptable Use**
 
@@ -97,7 +97,7 @@ enum LegalText {
 
     **11. Limitation of Liability**
 
-    To the fullest extent allowed by law, we are not liable for any indirect, incidental, special, or consequential damages, including missed appointments, lost income, or injury from walking, arising from your use of the app. Our total liability to you for any claim will not be more than the amount, if any, you paid for Alarm7 Premium in the 12 months before the claim. Some places don't allow these limits, so they may not fully apply to you.
+    To the fullest extent allowed by law, we are not liable for any indirect, incidental, special, or consequential damages, including missed appointments, lost income, or injury from walking or squatting, arising from your use of the app. Our total liability to you for any claim will not be more than the amount, if any, you paid for Alarm7 Premium in the 12 months before the claim. Some places don't allow these limits, so they may not fully apply to you.
 
     **12. Apple**
 
@@ -127,7 +127,7 @@ enum LegalText {
     static let privacy = """
     **Alarm7 Privacy Policy**
 
-    Last updated: September 27, 2026
+    Last updated: October 12, 2026
 
     Alarm7 ("the app") is built by Sami ("we," "us"). This policy explains how the app handles your information.
 
@@ -139,13 +139,17 @@ enum LegalText {
 
     Alarm7 uses your device's motion sensor to count steps so it can turn off your alarm. This data is processed only on your device and is never sent to us or anyone else.
 
+    **Camera (Squats)**
+
+    If you set an alarm to Squats, Alarm7 asks for camera permission and uses the front camera while that alarm is ringing (or while you try squats out) to see your body's position and count your squats. This happens only on your device using Apple's built-in body detection. The video is never recorded, saved, or sent to us or anyone else, and no photos or face data are kept. You can turn off camera access for Alarm7 anytime in the Settings app.
+
     **App Lock (Screen Time)**
 
     If you use App Lock ("Lock apps after you wake up"), Alarm7 asks for Apple's Screen Time permission and uses it to lock the apps you choose. Apple never tells Alarm7 which apps you picked or how you use them. The app only receives private codes from Apple that it can use to show and lock those apps, and these codes stay on your device. Alarm7 does not see your Screen Time reports, browsing, or app usage. You can turn off Screen Time access for Alarm7 anytime in the Settings app.
 
     **Alarms & Settings**
 
-    Your alarms, step goals, and settings are stored only on your device. If you delete the app, this data is deleted too.
+    Your alarms, step and squat goals, and settings are stored only on your device. If you delete the app, this data is deleted too.
 
     **Notifications & Alarms**
 
@@ -165,7 +169,7 @@ enum LegalText {
 
     **Your Choices**
 
-    You can turn off Motion & Fitness, Alarms, Screen Time, or notification access anytime in your iPhone Settings. Some features won't work without them: step-based alarm dismissal needs Motion & Fitness, and App Lock needs Screen Time.
+    You can turn off Motion & Fitness, Camera, Alarms, Screen Time, or notification access anytime in your iPhone Settings. Some features won't work without them: step-based alarm dismissal needs Motion & Fitness, squats need the Camera, and App Lock needs Screen Time.
 
     **Your Rights**
 

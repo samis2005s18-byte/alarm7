@@ -185,14 +185,15 @@ struct WakeUpView: View {
 
 /// "Can't walk? Hold to stop" — must be held for the full 10 seconds, so it's
 /// there for people who can't walk but too slow to be an easy way out.
-private struct HoldToStopButton: View {
+struct HoldToStopButton: View {
+    var title = "Can't walk? Hold for 10 seconds to stop"
     var onComplete: () -> Void
     @State private var progress = 0.0
 
     private static let holdDuration: TimeInterval = 10
 
     var body: some View {
-        Label("Can't walk? Hold for 10 seconds to stop", systemImage: "exclamationmark.triangle.fill")
+        Label(title, systemImage: "exclamationmark.triangle.fill")
             .font(.footnote.weight(.semibold))
             .foregroundStyle(Theme.accent)
             .frame(maxWidth: .infinity)
@@ -228,21 +229,37 @@ struct WakeUpScreen: View {
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
-            WakeUpView(
-                now: context.date,
-                stepCount: session.steps,
-                stepGoal: session.goal,
-                isMoving: session.lastStepDate.map { context.date.timeIntervalSince($0) < 3 } ?? false,
-                isComplete: session.isComplete,
-                label: session.label,
-                statusText: session.progressStatus,
-                statusIcon: session.progressIcon,
-                errorMessage: session.motionMessage,
-                repeatOffer: repeatOffer,
-                diagnostics: session.diagnostics,
-                onEmergencyStop: session.emergencyStopAllowed ? { session.emergencyStop() } : nil,
-                appsLockedUntil: AppLocker.shared.isLocked ? AppLocker.shared.lockedUntil : nil
-            )
+            if session.challenge == .squats && !session.isComplete {
+                SquatWakeView(
+                    cameraSession: session.cameraSession,
+                    pose: session.pose,
+                    count: session.steps,
+                    goal: session.goal,
+                    depth: session.squatDepth,
+                    now: context.date,
+                    label: session.label,
+                    statusText: session.progressStatus,
+                    errorMessage: session.motionMessage,
+                    onEmergencyStop: session.emergencyStopAllowed ? { session.emergencyStop() } : nil,
+                    onClose: session.isDemo ? { session.finishNow() } : nil
+                )
+            } else {
+                WakeUpView(
+                    now: context.date,
+                    stepCount: session.steps,
+                    stepGoal: session.goal,
+                    isMoving: session.lastStepDate.map { context.date.timeIntervalSince($0) < 3 } ?? false,
+                    isComplete: session.isComplete,
+                    label: session.label,
+                    statusText: session.progressStatus,
+                    statusIcon: session.progressIcon,
+                    errorMessage: session.motionMessage,
+                    repeatOffer: repeatOffer,
+                    diagnostics: session.diagnostics,
+                    onEmergencyStop: session.emergencyStopAllowed ? { session.emergencyStop() } : nil,
+                    appsLockedUntil: AppLocker.shared.isLocked ? AppLocker.shared.lockedUntil : nil
+                )
+            }
         }
         .sheet(isPresented: $showPaywall) {
             PaywallView { showPaywall = false }

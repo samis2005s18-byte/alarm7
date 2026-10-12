@@ -8,7 +8,7 @@ options:
 settings:
   base:
     APP_BUNDLE_ID: ${BUNDLE_ID}
-    MARKETING_VERSION: "1.1"
+    MARKETING_VERSION: "1.2"
     CURRENT_PROJECT_VERSION: "1"
     VERSIONING_SYSTEM: apple-generic
     SWIFT_VERSION: "5.0"

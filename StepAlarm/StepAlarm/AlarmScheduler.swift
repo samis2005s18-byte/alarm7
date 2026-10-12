@@ -12,6 +12,8 @@ struct AlarmRingSettings: Codable {
     var minute: Int
     /// Optional so settings saved by earlier versions still load.
     var emergencyStop: Bool?
+    /// Walk or squat (nil = settings saved before squats existed = walk).
+    var challenge: Challenge?
 }
 
 /// Remembers each scheduled alarm's ring settings and which "re-ring"
@@ -164,7 +166,7 @@ final class AlarmScheduler {
         await submit(
             id: item.id, schedule: schedule, steps: item.steps, label: item.label,
             snoozeEnabled: item.snoozeEnabled, vibrationEnabled: item.vibrationEnabled,
-            hour: item.hour, minute: item.minute, emergencyStop: item.emergencyStop
+            hour: item.hour, minute: item.minute, emergencyStop: item.emergencyStop, challenge: item.challenge
         )
         await scheduleBackups(for: item)
     }
@@ -190,13 +192,13 @@ final class AlarmScheduler {
         await scheduleBackups(
             parent: item.id, firstRing: next, steps: item.steps, label: item.label,
             vibrationEnabled: item.vibrationEnabled, hour: item.hour, minute: item.minute,
-            emergencyStop: item.emergencyStop
+            emergencyStop: item.emergencyStop, challenge: item.challenge
         )
     }
 
     private func scheduleBackups(
         parent: UUID, firstRing: Date, steps: Int, label: String, vibrationEnabled: Bool, hour: Int, minute: Int,
-        emergencyStop: Bool = false
+        emergencyStop: Bool = false, challenge: Challenge = .steps
     ) async {
         await cancelBackups(of: parent)
         var ids: [UUID] = []
@@ -206,7 +208,7 @@ final class AlarmScheduler {
             await submit(
                 id: id, schedule: .fixed(firstRing.addingTimeInterval(Double(k) * Self.backupInterval)),
                 steps: steps, label: label, snoozeEnabled: true, vibrationEnabled: vibrationEnabled,
-                hour: hour, minute: minute, emergencyStop: emergencyStop
+                hour: hour, minute: minute, emergencyStop: emergencyStop, challenge: challenge
             )
         }
         AlarmGoals.setBackups(ids, for: parent)
@@ -238,7 +240,8 @@ final class AlarmScheduler {
 
     /// Rings again shortly after the system Stop button was tapped.
     func scheduleReRing(
-        parent: UUID, steps: Int, label: String, vibrationEnabled: Bool, hour: Int, minute: Int, emergencyStop: Bool
+        parent: UUID, steps: Int, label: String, vibrationEnabled: Bool, hour: Int, minute: Int, emergencyStop: Bool,
+        challenge: Challenge = .steps
     ) async {
         let id = UUID()
         AlarmGoals.reRingIDs.append(id)
@@ -246,31 +249,35 @@ final class AlarmScheduler {
         let fire = Date().addingTimeInterval(Self.reRingDelay)
         await submit(
             id: id, schedule: .fixed(fire), steps: steps, label: label, snoozeEnabled: true,
-            vibrationEnabled: vibrationEnabled, hour: hour, minute: minute, emergencyStop: emergencyStop
+            vibrationEnabled: vibrationEnabled, hour: hour, minute: minute, emergencyStop: emergencyStop,
+            challenge: challenge
         )
     }
 
     private func submit(
         id: UUID, schedule: Alarm.Schedule, steps: Int, label: String, snoozeEnabled: Bool, vibrationEnabled: Bool,
-        hour: Int, minute: Int, emergencyStop: Bool = false
+        hour: Int, minute: Int, emergencyStop: Bool = false, challenge: Challenge = .steps
     ) async {
         AlarmGoals.set(
             AlarmRingSettings(
                 stepGoal: steps, label: label, snoozeEnabled: snoozeEnabled, vibrationEnabled: vibrationEnabled,
-                hour: hour, minute: minute, emergencyStop: emergencyStop
+                hour: hour, minute: minute, emergencyStop: emergencyStop, challenge: challenge
             ),
             for: id
         )
 
         let stopButton = AlarmButton(text: "Stop", textColor: .white, systemImageName: "stop.fill")
-        let walkButton = AlarmButton(text: "Walk", textColor: .white, systemImageName: "figure.walk")
+        let goButton = challenge == .squats
+            ? AlarmButton(text: "Squat", textColor: .white, systemImageName: Challenge.squatSymbol)
+            : AlarmButton(text: "Walk", textColor: .white, systemImageName: "figure.walk")
 
-        let stepsText = "\(steps) \(steps == 1 ? "step" : "steps")"
-        let title = label.isEmpty ? "Wake up! Walk \(stepsText)" : "\(label) — walk \(stepsText)"
+        let amount = challenge.amount(steps)
+        let verb = challenge == .squats ? "do" : "walk"
+        let title = label.isEmpty ? "Wake up! \(verb.capitalized) \(amount)" : "\(label) — \(verb) \(amount)"
         let alert = AlarmPresentation.Alert(
             title: LocalizedStringResource(stringLiteral: title),
             stopButton: stopButton,
-            secondaryButton: walkButton,
+            secondaryButton: goButton,
             secondaryButtonBehavior: .custom
         )
 
