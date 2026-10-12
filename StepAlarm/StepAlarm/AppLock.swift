@@ -173,7 +173,7 @@ struct AppLockAlarmSection: View {
             } else if !hasPremium {
                 Text("App Lock is Premium: lock any apps you choose for 1 minute to 1 hour after you wake up. Everything else in Alarm7 is free.")
             } else if isOn {
-                Text("After you walk off this alarm, these apps stay locked for the time you choose, then open again by themselves. Tip: search for Instagram, TikTok or Snapchat, or open the Social group.")
+                Text("After you turn off this alarm, these apps stay locked for the time you choose, then open again by themselves. Tip: search for Instagram, TikTok or Snapchat, or open the Social group.")
             }
         }
         .familyActivityPicker(isPresented: $showPicker, selection: $selection)
@@ -297,7 +297,7 @@ struct AppLockAlarmSection: View {
             .tint(Theme.textPrimary)
             .accessibilityValue(Self.durationText(minutes))
 
-            Text("Apps stay locked for \(Self.durationText(minutes)) after you walk off this alarm.")
+            Text("Apps stay locked for \(Self.durationText(minutes)) after you turn off this alarm.")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
         }
