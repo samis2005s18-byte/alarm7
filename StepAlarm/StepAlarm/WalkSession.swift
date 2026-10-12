@@ -248,7 +248,8 @@ final class WalkSession {
                 time: motion.timestamp,
                 // Gravity points down, so flip the sign to make "up" positive.
                 vertical: -(a.x * g.x + a.y * g.y + a.z * g.z),
-                rotation: (tx * tx + ty * ty + tz * tz).squareRoot()
+                rotation: (tx * tx + ty * ty + tz * tz).squareRoot(),
+                turning: spinAboutVertical * gSquared.squareRoot()
             )
             MainActor.assumeIsolated { self?.handleMotion(sample) }
         }

@@ -19,6 +19,9 @@ struct StepDetector {
         /// Rate the phone is being tipped or twisted, in rad/s — excluding
         /// spinning about the vertical axis, which is just turning around.
         var rotation: Double
+        /// Rate the phone spins about the vertical axis, in rad/s: the person
+        /// turning around (e.g. at the wall of a small room).
+        var turning: Double = 0
     }
 
     // Tuning
@@ -37,6 +40,11 @@ struct StepDetector {
     static let fastPeaksForShake = 2      // this many too-fast bumps within `fastPeakWindow` = shaking
     static let fastPeakWindow = 2.0       // s
     static let resumeWindow = 4.0         // s — walking again within this after a pause keeps counting
+    static let turnRate = 1.5             // rad/s averaged over ~0.5 s — the person is turning around
+    static let turnGrace = 1.0            // s — a turn's wobbly, uneven steps are forgiven this long after it
+    static let maxTurnDuration = 2.5      // s — "turning" longer than this isn't a turn (e.g. twisting the phone)
+    static let turnMinInterval = 0.2      // s — quick pivot steps while turning still count
+    static let maxTurnSteps = 4           // a turn takes 2–4 steps; more "turn steps" in a row is twisting the phone
 
     private(set) var rejectedShakes = 0
     /// Steps seen while the walking rhythm is still being checked. Shown right
@@ -49,6 +57,11 @@ struct StepDetector {
     private var peak = 0.0
     private var peakTime: TimeInterval = 0
     private var recentRotation: [Double] = []
+    private var recentTurning: [Double] = []
+    private var turnStart: TimeInterval?
+    private var lastTurnTime: TimeInterval = -.infinity
+    /// Steps counted under the turning rules since the last normal step.
+    private var turnSteps = 0
     private var lastStepTime: TimeInterval?
     private var pending = 0
     private var intervals: [Double] = []
@@ -66,6 +79,7 @@ struct StepDetector {
         smoothed += Self.smoothing * (sample.vertical - smoothed)
         recentRotation.append(sample.rotation)
         if recentRotation.count > 25 { recentRotation.removeFirst(recentRotation.count - 25) }
+        trackTurning(sample)
 
         if inPeak {
             if smoothed > peak {
@@ -91,9 +105,38 @@ struct StepDetector {
         return 0
     }
 
+    /// Notes when the person turns around. Turning makes the phone wobble and
+    /// the steps uneven, which on its own would look like shaking.
+    private mutating func trackTurning(_ sample: Sample) {
+        recentTurning.append(abs(sample.turning))
+        if recentTurning.count > 25 { recentTurning.removeFirst(recentTurning.count - 25) }
+        let meanTurning = recentTurning.reduce(0, +) / Double(recentTurning.count)
+        guard meanTurning > Self.turnRate else {
+            turnStart = nil
+            return
+        }
+        let start = turnStart ?? sample.time
+        turnStart = start
+        if sample.time - start <= Self.maxTurnDuration { lastTurnTime = sample.time }
+    }
+
     private mutating func candidate(at time: TimeInterval, amplitude: Double) -> Int {
         let meanRotation = recentRotation.reduce(0, +) / Double(max(recentRotation.count, 1))
-        if amplitude > Self.maxPeak || meanRotation > Self.maxRotation {
+        // Mid-walk, turning around makes the phone wobble and the steps quick
+        // and uneven. Those steps still count (a few per turn), instead of
+        // looking like shaking and restarting the count.
+        let turning = counting && time - lastTurnTime <= Self.turnGrace && turnSteps < Self.maxTurnSteps
+        if amplitude > Self.maxPeak {
+            rejectShake()
+            return 0
+        }
+        if meanRotation > Self.maxRotation && !turning {
+            if counting {
+                // One odd wobble doesn't end a walk; a run of them is shaking.
+                offBeatSteps += 1
+                if offBeatSteps > Self.offBeatStepsAllowed { rejectShake() }
+                return 0
+            }
             rejectShake()
             return 0
         }
@@ -102,7 +145,7 @@ struct StepDetector {
             return 0
         }
         let interval = time - last
-        if interval < Self.minInterval {
+        if interval < (turning ? Self.turnMinInterval : Self.minInterval) {
             // An occasional double bump within one step is normal; a run of
             // them is a phone being shaken.
             fastPeakTimes.append(time)
@@ -122,7 +165,7 @@ struct StepDetector {
             startRhythm(at: time)
             return 0
         }
-        if counting && amplitude > averagePeak * Self.maxPeakJump {
+        if counting && !turning && amplitude > averagePeak * Self.maxPeakJump {
             // Suddenly far harder than this walk's steps — likely a shake.
             offBeatSteps += 1
             if offBeatSteps > Self.offBeatStepsAllowed { rejectShake() }
@@ -132,7 +175,10 @@ struct StepDetector {
             // Real walking keeps a roughly steady beat. A turn or an uneven
             // step or two still counts; only a sustained change restarts the
             // rhythm check.
-            if abs(interval - averageInterval) > averageInterval * Self.maxRhythmDrift {
+            if turning {
+                // Steps while turning are uneven: count them, but don't let
+                // them change the walk's usual beat.
+            } else if abs(interval - averageInterval) > averageInterval * Self.maxRhythmDrift {
                 offBeatSteps += 1
                 guard offBeatSteps <= Self.offBeatStepsAllowed else {
                     startRhythm(at: time)
@@ -145,7 +191,12 @@ struct StepDetector {
             }
             lastStepTime = time
             lastCountedTime = time
-            averagePeak += 0.2 * (amplitude - averagePeak)
+            if turning {
+                turnSteps += 1
+            } else {
+                turnSteps = 0
+                averagePeak += 0.2 * (amplitude - averagePeak)
+            }
             return 1
         }
         lastStepTime = time
@@ -183,6 +234,7 @@ struct StepDetector {
 
     private mutating func rejectShake() {
         rejectedShakes += 1
+        turnSteps = 0
         lastStepTime = nil
         pending = 0
         intervals = []

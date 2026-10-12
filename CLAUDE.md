@@ -48,6 +48,7 @@ Alarm7 is an iPhone alarm that only turns off after the user walks a set number 
 - Safety: if camera access is off at ring time, the alarm switches to walking.
 - `NSCameraUsageDescription` added; Terms/Privacy updated (Camera section). MARKETING_VERSION 1.2. **Not compiled yet** (no Swift on this Windows PC) — first Codemagic build may need small fixes. Pushing `squats` does NOT auto-build (codemagic triggers only on main/app-lock) — start it manually in Codemagic, choosing branch `squats`.
 - Store Google Doc privacy policy needs the camera paragraph too before submitting 1.2.
+- Walking fix (Oct 12, branch `squats`): turning around in a small room made the phone wobble, which looked like shaking and restarted the 4-step rhythm check, so counting stalled. `StepDetector` now gets `turning` (spin about vertical, rad/s); mid-walk, within 1 s of a turn (turn < 2.5 s long), up to 4 steps count with relaxed rules (wobble OK, steps ≥0.2 s apart, uneven beat OK). Hard jolts (>1 g) still reject. One odd wobble mid-walk no longer resets (3 in a row does). Python sim: bedroom walk with wobble 57%→82%, hallway 80%→91%; shaking still 0, walk-then-twist-shake capped at +4.
 
 ## How building works (no Xcode)
 - Code lives in this folder and on GitHub **private** repo `samis2005s18-byte/alarm7` (gh CLI is logged in on this Mac).
