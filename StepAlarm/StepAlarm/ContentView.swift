@@ -159,8 +159,7 @@ struct ContentView: View {
         } message: {
             Text("Alarm7 can't set an alarm until both Alarms and Motion & Fitness are allowed. Open Settings, tap Alarm7, and turn both on.")
         }
-        // A squat try-out is shown by the Add Alarm page itself (it's on top).
-        .fullScreenCover(isPresented: Binding(get: { session.isActive && !session.isTrial }, set: { _ in })) {
+        .fullScreenCover(isPresented: Binding(get: { session.isActive }, set: { _ in })) {
             WakeUpScreen()
         }
         .fullScreenCover(isPresented: Binding(get: { !settings.hasCompletedOnboarding }, set: { _ in })) {

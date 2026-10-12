@@ -44,7 +44,7 @@ Alarm7 is an iPhone alarm that only turns off after the user walks a set number 
 - `PoseCamera.swift` — front camera + Apple Vision body pose (on device, 15 fps, nothing recorded). `BodyPose.depth` = hip height above knee ÷ shin height (≈1 standing, →0 in a squat); falls back to upper-body length if feet aren't visible.
 - `SquatDetector.swift` — counts a squat on the way back up: stand (>0.75) → down (<0.45) → stand, min 0.6 s per rep, smoothing 0.5. Python simulation (real/half/noisy/dropped-frame squats) passed; very fast bouncing can count 1 now and then.
 - `SquatWakeView.swift` — full-screen camera with white body lines (green when low enough), big "7/15", "Low" depth meter, tips, Emergency stop.
-- Add Alarm: Walk/Squats buttons (asks camera permission when Squats is picked), squat chips 5/10/15/20, **Try it now** (3-squat trial via `WalkSession.beginSquatTrial`, shown by AddAlarmView's own fullScreenCover; ContentView's cover skips `isTrial`).
+- Add Alarm: Walk/Squats buttons (asks camera permission when Squats is picked), squat chips 5/10/15/20. "Try it now" was removed (Sami, Oct 12). Footers kept very short on Sami's request (Emergency stop: "Hold a button 10 seconds to stop the alarm. Only for injuries.").
 - Safety: if camera access is off at ring time, the alarm switches to walking.
 - `NSCameraUsageDescription` added; Terms/Privacy updated (Camera section). MARKETING_VERSION 1.2. **Not compiled yet** (no Swift on this Windows PC) — first Codemagic build may need small fixes. Pushing `squats` does NOT auto-build (codemagic triggers only on main/app-lock) — start it manually in Codemagic, choosing branch `squats`.
 - Store Google Doc privacy policy needs the camera paragraph too before submitting 1.2.

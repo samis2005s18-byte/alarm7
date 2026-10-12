@@ -23,8 +23,6 @@ final class WalkSession {
     private(set) var emergencyStopAllowed = false
     /// Walk or squat. `steps` / `goal` count squats when this is `.squats`.
     private(set) var challenge: Challenge = .steps
-    /// A squat try-out started from the Add Alarm page (shown over that page).
-    private(set) var isTrial = false
 
     // Squats: the latest body seen by the camera, for the lines on screen.
     private(set) var pose: BodyPose?
@@ -78,7 +76,6 @@ final class WalkSession {
         let settings = AlarmGoals.settings(for: alarmID)
         emergencyStopAllowed = settings?.emergencyStop ?? false
         challenge = settings?.challenge ?? .steps
-        isTrial = false
         start(
             alarmID: alarmID, goal: settings?.stepGoal ?? 15, label: settings?.label ?? "",
             // Follows the Vibration switch in Settings, even for alarms saved earlier.
@@ -91,16 +88,6 @@ final class WalkSession {
         guard !isActive else { return }
         emergencyStopAllowed = false
         challenge = .steps
-        isTrial = false
-        start(alarmID: nil, goal: goal, label: "", vibrationEnabled: true, hour: 7, minute: 0, demo: true)
-    }
-
-    /// "Try it now" on the Add Alarm page: real camera squats, no alarm sound.
-    func beginSquatTrial(goal: Int = 3) {
-        guard !isActive else { return }
-        emergencyStopAllowed = false
-        challenge = .squats
-        isTrial = true
         start(alarmID: nil, goal: goal, label: "", vibrationEnabled: true, hour: 7, minute: 0, demo: true)
     }
 
@@ -469,7 +456,6 @@ final class WalkSession {
         pose = nil
         isActive = false
         isComplete = false
-        isTrial = false
         alarmID = nil
         UIApplication.shared.isIdleTimerDisabled = false
     }

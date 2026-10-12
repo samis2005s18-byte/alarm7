@@ -22,7 +22,6 @@ struct AddAlarmView: View {
     @State private var challenge: Challenge
     @State private var showCameraAlert = false
     @State private var showPaywall = false
-    private var session = WalkSession.shared
 
     private var isPro: Bool { SubscriptionStore.shared.hasFullAccess }
     private static let freeStepLimit = 15
@@ -84,9 +83,6 @@ struct AddAlarmView: View {
         .background(Theme.background.ignoresSafeArea())
         .sheet(isPresented: $showPaywall) {
             PaywallView { showPaywall = false }
-        }
-        .fullScreenCover(isPresented: Binding(get: { session.isActive && session.isTrial }, set: { _ in })) {
-            WakeUpScreen()
         }
         .alert("Camera is off", isPresented: $showCameraAlert) {
             Button("Open Settings") {
@@ -200,16 +196,6 @@ struct AddAlarmView: View {
         }
     }
 
-    private func trySquats() {
-        Task {
-            guard await PoseCamera.requestAccess() else {
-                showCameraAlert = true
-                return
-            }
-            session.beginSquatTrial()
-        }
-    }
-
     // MARK: - Steps
 
     private var unitWord: String { challenge == .squats ? "Squats" : "Steps" }
@@ -276,23 +262,11 @@ struct AddAlarmView: View {
                      : "\(challenge.amount(Int(steps))) ≈ \(Int(steps)) sec of walking")
                     .font(.footnote)
                     .foregroundStyle(Theme.textSecondary)
-
-                if challenge == .squats {
-                    Button(action: trySquats) {
-                        Label("Try it now", systemImage: "camera.fill")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Theme.background)
-                            .frame(maxWidth: .infinity, minHeight: Theme.minTapTarget)
-                            .background(Theme.textPrimary, in: Capsule())
-                    }
-                    .buttonStyle(.pressable)
-                    .padding(.top, Theme.Spacing.xs)
-                }
             }
             .padding(.vertical, Theme.Spacing.xs)
         } footer: {
             if challenge == .squats {
-                Text("When it rings, stand your phone up on the floor or a low table with the screen facing you, step back until your whole body shows, then squat. The camera only counts squats — nothing is recorded or saved. No snooze: tapping Stop rings the alarm again until you squat.")
+                Text("Stand your phone up facing you and step back so your whole body shows. Nothing is recorded.")
             } else {
                 Text("No snooze: tapping Stop rings the alarm again until you walk.")
             }
@@ -432,7 +406,7 @@ struct AddAlarmView: View {
             .tint(Theme.accent)
             .onChange(of: emergencyStop) { _, _ in Theme.tap() }
         } footer: {
-            Text("Caution: this lets you turn off the alarm without walking or squatting by holding a button for 10 seconds. Only turn it on if you might not be able to walk, for example because of an injury.")
+            Text("Hold a button 10 seconds to stop the alarm. Only for injuries.")
                 .foregroundStyle(Theme.accent)
         }
     }
