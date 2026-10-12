@@ -9,6 +9,7 @@ workflows:
       branch_patterns:
         - pattern: main
         - pattern: app-lock
+        - pattern: squats
     integrations:
       app_store_connect: StepAlarm key
     environment:
