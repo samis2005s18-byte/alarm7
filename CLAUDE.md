@@ -55,6 +55,7 @@ Alarm7 is an iPhone alarm that only turns off after the user walks a set number 
 
 ## LIVE on the App Store (confirmed Oct 3, 2026)
 - https://apps.apple.com/us/app/alarm7/id6814536946 — free, Premium $4.99/mo or $29.99/yr (1.1 approved). Requires iOS 26+ (~79% of iPhones per Apple, June 2026).
+- Oct 12, 2026: Canada prices changed (Sami confirmed) from CA$39.99/yr and CA$6.99/mo (Apple's auto-conversion) to **CA$29.99/yr and CA$4.99/mo**, starting Oct 14, 2026. Other countries unchanged. The app shows Apple's `displayPrice`, so price changes need no new build.
 - Listing also showed Mac (Apple Silicon) and Vision Pro; advised Sami to uncheck both in Pricing and Availability (no step counting there).
 
 ## Version 1.1 rejection (Oct 1, 2026) — 5.1.1(iv), 2.1(b), 3.1.2(c)
